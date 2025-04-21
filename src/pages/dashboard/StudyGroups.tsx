@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +11,8 @@ import {
   addDoc, 
   updateDoc, 
   serverTimestamp, 
-  Timestamp 
+  Timestamp,
+  or 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -60,7 +60,6 @@ export default function StudyGroups() {
   });
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Load user's study groups
   useEffect(() => {
     async function loadUserGroups() {
       if (!currentUser) return;
@@ -68,12 +67,15 @@ export default function StudyGroups() {
       try {
         setLoading(true);
         
-        // Query for groups where the user is a member
         const groupsRef = collection(db, 'studyGroups');
         const membershipsRef = collection(db, 'groupMemberships');
+        
         const membershipQuery = query(
           membershipsRef,
-          where('userId', '==', currentUser.uid)
+          or(
+            where('userId', '==', currentUser.uid),
+            where('email', '==', currentUser.email)
+          )
         );
         
         const membershipDocs = await getDocs(membershipQuery);
@@ -81,7 +83,6 @@ export default function StudyGroups() {
         
         const fetchedGroups: StudyGroup[] = [];
         
-        // For each group ID, fetch the full group data
         for (const gid of groupIds) {
           const groupDocRef = doc(db, 'studyGroups', gid);
           const groupDoc = await getDoc(groupDocRef);
@@ -105,13 +106,11 @@ export default function StudyGroups() {
         
         setMyGroups(fetchedGroups);
         
-        // If a groupId is provided, load that specific group
         if (groupId) {
           const group = fetchedGroups.find(g => g.id === groupId);
           if (group) {
             setCurrentGroup(group);
           } else {
-            // Group not found or user doesn't have access
             navigate('/dashboard/study-groups');
             toast({
               title: "Group not found",
@@ -135,7 +134,6 @@ export default function StudyGroups() {
     loadUserGroups();
   }, [currentUser, groupId, navigate, toast]);
 
-  // Handle form input changes
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -149,14 +147,12 @@ export default function StudyGroups() {
     }
   };
 
-  // Create new study group
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!currentUser) return;
     
     try {
-      // Validate form data
       if (!formData.name.trim()) {
         toast({
           title: "Group name required",
@@ -166,7 +162,6 @@ export default function StudyGroups() {
         return;
       }
       
-      // Create the study group document
       const newGroupRef = await addDoc(collection(db, 'studyGroups'), {
         name: formData.name,
         description: formData.description,
@@ -179,7 +174,6 @@ export default function StudyGroups() {
         isPublic: formData.isPublic
       });
       
-      // Add the creator as the first member (owner)
       await addDoc(collection(db, 'groupMemberships'), {
         groupId: newGroupRef.id,
         userId: currentUser.uid,
@@ -190,7 +184,6 @@ export default function StudyGroups() {
         joinedAt: serverTimestamp()
       });
       
-      // Reset form and close dialog
       setFormData({
         name: '',
         description: '',
@@ -200,7 +193,6 @@ export default function StudyGroups() {
       });
       setCreateDialogOpen(false);
       
-      // Add the new group to state
       const newGroup: StudyGroup = {
         id: newGroupRef.id,
         name: formData.name,
@@ -216,7 +208,6 @@ export default function StudyGroups() {
       
       setMyGroups(prev => [...prev, newGroup]);
       
-      // Navigate to the new group
       navigate(`/dashboard/study-groups/${newGroupRef.id}`);
       
       toast({
@@ -233,7 +224,6 @@ export default function StudyGroups() {
     }
   };
 
-  // Select a group to view
   const handleSelectGroup = (group: StudyGroup) => {
     navigate(`/dashboard/study-groups/${group.id}`);
     setCurrentGroup(group);
@@ -250,7 +240,6 @@ export default function StudyGroups() {
         </p>
       </div>
 
-      {/* Create Study Group Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogTrigger asChild>
           <Button className="mb-4">
@@ -351,7 +340,6 @@ export default function StudyGroups() {
       </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Groups List (Left Sidebar) */}
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -375,7 +363,6 @@ export default function StudyGroups() {
           </CardContent>
         </Card>
 
-        {/* Main Group Content */}
         <div className="md:col-span-3">
           {currentGroup ? (
             <Card>

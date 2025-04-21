@@ -97,7 +97,11 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         setMembers(membersData);
         
         // Determine current user's role in the group
-        const userMembership = membersData.find(m => m.email === currentUser.email);
+        const userMembership = membersData.find(m => 
+          m.email === currentUser.email || 
+          (m.id && m.id === currentUser.uid)
+        );
+        
         if (userMembership) {
           setUserRole(userMembership.role);
         }
