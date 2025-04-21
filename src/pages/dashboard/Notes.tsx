@@ -195,6 +195,7 @@ const Notes = () => {
                 margin: 0 auto; 
                 line-height: 1.8;
                 color: #333;
+                background: #F8F9FC;
               }
               h1 { 
                 color: #6E59A5; 
@@ -211,16 +212,21 @@ const Notes = () => {
               .content { 
                 white-space: pre-wrap; 
                 line-height: 1.8;
-                background: #F8F9FC;
+                background: white;
                 padding: 2rem;
                 border-radius: 8px;
-                border: 1px solid #E5DEFF;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
               }
               .highlight {
                 background: #E5DEFF;
                 padding: 0.2rem 0.4rem;
                 border-radius: 4px;
                 font-weight: 500;
+              }
+              .key-point {
+                border-left: 3px solid #6E59A5;
+                padding-left: 1rem;
+                margin: 1rem 0;
               }
             </style>
           </head>
@@ -471,7 +477,7 @@ const Notes = () => {
                                   AI-Generated Summary
                                 </h3>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => openSummaryInNewTab(activeNote.summary!, activeNote.title)}
                                   className="hover:bg-primary/10"
@@ -481,25 +487,46 @@ const Notes = () => {
                                 </Button>
                               </div>
                               <Separator className="my-2" />
-                              <div className="bg-accent/30 p-6 rounded-lg border border-accent space-y-4">
+                              <div className="bg-primary p-6 rounded-lg border border-primary/20 space-y-4">
                                 <div className="prose prose-slate max-w-none">
-                                  {activeNote.summary.split('\n').map((paragraph, index) => (
-                                    <p key={index} className="text-primary-foreground leading-relaxed">
-                                      {paragraph.startsWith('•') ? (
-                                        <span className="flex items-start gap-2">
-                                          <span className="text-primary mt-1.5">•</span>
-                                          <span>{paragraph.substring(1)}</span>
-                                        </span>
-                                      ) : paragraph.includes(':') ? (
-                                        <>
-                                          <strong className="text-primary">{paragraph.split(':')[0]}:</strong>
-                                          {paragraph.split(':')[1]}
-                                        </>
-                                      ) : (
-                                        paragraph
-                                      )}
-                                    </p>
-                                  ))}
+                                  {activeNote.summary.split('\n').map((paragraph, index) => {
+                                    if (paragraph.startsWith('•')) {
+                                      return (
+                                        <p key={index} className="text-primary-foreground flex items-start gap-2">
+                                          <span className="text-primary-foreground/80">•</span>
+                                          <span className="flex-1">{paragraph.substring(1)}</span>
+                                        </p>
+                                      );
+                                    }
+                                    
+                                    if (paragraph.includes(':')) {
+                                      const [title, content] = paragraph.split(':');
+                                      return (
+                                        <p key={index} className="text-primary-foreground">
+                                          <strong className="text-primary-foreground/90 font-bold">
+                                            {title}:
+                                          </strong>
+                                          <span className="ml-2">{content}</span>
+                                        </p>
+                                      );
+                                    }
+                                    
+                                    if (paragraph.toLowerCase().includes('key point') || 
+                                        paragraph.toLowerCase().includes('important') ||
+                                        paragraph.toLowerCase().includes('conclusion')) {
+                                      return (
+                                        <p key={index} className="text-primary-foreground font-semibold border-l-4 border-primary-foreground/20 pl-4">
+                                          {paragraph}
+                                        </p>
+                                      );
+                                    }
+                                    
+                                    return (
+                                      <p key={index} className="text-primary-foreground leading-relaxed">
+                                        {paragraph}
+                                      </p>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             </div>
@@ -562,7 +589,7 @@ const Notes = () => {
                             <Label htmlFor="tags">Tags (comma separated)</Label>
                             <Input
                               id="tags"
-                              placeholder="study, math, lecture"
+                              placeholder="study, lecture, document"
                               value={newNoteTags}
                               onChange={(e) => setNewNoteTags(e.target.value)}
                             />
