@@ -5,7 +5,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Calendar as CalendarIcon, UserPlus } from 'lucide-react';
+import { Clock, Calendar as CalendarIcon, UserPlus, Plus } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import StudySessionCard from '@/components/dashboard/StudySessionCard';
 import WeeklyScheduleView from '@/components/dashboard/WeeklyScheduleView';
 import CalendarSyncDialog from '@/components/dashboard/CalendarSyncDialog';
+import CreateSessionDialog from '@/components/dashboard/CreateSessionDialog';
 import { generateStudyPlan } from '@/lib/ai';
 
 const db = getFirestore();
@@ -33,6 +34,7 @@ export interface StudySession {
 export default function Schedule() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showCalendarSync, setShowCalendarSync] = useState(false);
+  const [showCreateSession, setShowCreateSession] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const { toast } = useToast();
 
@@ -90,6 +92,12 @@ export default function Schedule() {
     if (!selectedDate) return false;
     const sessionDate = new Date(session.date);
     return sessionDate.toDateString() === selectedDate.toDateString();
+  }).sort((a, b) => {
+    // Sort by start time
+    const aTime = a.startTime.split(':').map(Number);
+    const bTime = b.startTime.split(':').map(Number);
+    if (aTime[0] !== bTime[0]) return aTime[0] - bTime[0];
+    return aTime[1] - bTime[1];
   });
 
   // Function to generate AI study plan
@@ -143,6 +151,13 @@ export default function Schedule() {
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             Sync Calendar
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => setShowCreateSession(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Session
           </Button>
           <Button 
             onClick={handleGenerateStudyPlan}
@@ -199,11 +214,25 @@ export default function Schedule() {
                             <div className="text-sm text-gray-500">
                               {session.startTime} - {session.endTime}
                             </div>
+                            <div className="text-xs mt-1 text-gray-400">
+                              {session.location} • {session.topic}
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">No sessions scheduled for this day</p>
+                      <div className="flex flex-col items-center justify-center py-4 text-center space-y-2">
+                        <p className="text-sm text-gray-500">No sessions scheduled for this day</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => setShowCreateSession(true)}
+                        >
+                          <Plus className="mr-2 h-3 w-3" />
+                          Add Session
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -231,14 +260,23 @@ export default function Schedule() {
                         Generate a study plan or create sessions manually
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      className="mt-2"
-                      onClick={handleGenerateStudyPlan}
-                      disabled={isGeneratingPlan || !hasAvailability}
-                    >
-                      Generate Study Plan
-                    </Button>
+                    <div className="space-x-2">
+                      <Button
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => setShowCreateSession(true)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Session
+                      </Button>
+                      <Button
+                        className="mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                        onClick={handleGenerateStudyPlan}
+                        disabled={isGeneratingPlan || !hasAvailability}
+                      >
+                        Generate AI Plan
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -249,6 +287,14 @@ export default function Schedule() {
 
       {showCalendarSync && (
         <CalendarSyncDialog open={showCalendarSync} onOpenChange={setShowCalendarSync} />
+      )}
+      
+      {showCreateSession && (
+        <CreateSessionDialog 
+          open={showCreateSession} 
+          onOpenChange={setShowCreateSession} 
+          onSessionCreated={refetchSessions}
+        />
       )}
     </div>
   );
