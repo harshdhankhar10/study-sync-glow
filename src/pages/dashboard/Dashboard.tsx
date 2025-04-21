@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import StudyMetrics from '@/components/dashboard/overview/StudyMetrics';
-import RecentActivity from '@/components/dashboard/overview/RecentActivity';
+import RecentActivity, { ActivityItem } from '@/components/dashboard/overview/RecentActivity';
 
 const db = getFirestore();
 
@@ -35,6 +34,62 @@ export default function Dashboard() {
         studyTime: 0,
         completedTasks: 0,
         activeGroups: 0
+      };
+    },
+    enabled: !!user?.uid,
+  });
+
+  // Fetch study groups count
+  const { data: groupsData } = useQuery({
+    queryKey: ['studyGroups', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return { count: 0, recent: [] };
+      
+      const membershipsRef = collection(db, 'groupMemberships');
+      const userMembershipsQuery = query(
+        membershipsRef,
+        where('userId', '==', user.uid)
+      );
+      
+      const emailMembershipsQuery = query(
+        membershipsRef,
+        where('email', '==', user.email)
+      );
+      
+      const [userIdResults, emailResults] = await Promise.all([
+        getDocs(userMembershipsQuery),
+        getDocs(emailMembershipsQuery)
+      ]);
+      
+      const uniqueGroupIds = new Set<string>();
+      
+      userIdResults.docs.forEach(doc => {
+        uniqueGroupIds.add(doc.data().groupId);
+      });
+      
+      emailResults.docs.forEach(doc => {
+        uniqueGroupIds.add(doc.data().groupId);
+      });
+      
+      const groupCount = uniqueGroupIds.size;
+      
+      const groupIds = Array.from(uniqueGroupIds).slice(0, 3);
+      const recentGroups = [];
+      
+      for (const groupId of groupIds) {
+        const groupRef = doc(db, 'studyGroups', groupId);
+        const groupSnap = await getDoc(groupRef);
+        if (groupSnap.exists()) {
+          recentGroups.push({
+            id: groupSnap.id,
+            ...groupSnap.data()
+          });
+        }
+      }
+      
+      return {
+        count: groupCount,
+        recent: recentGroups
       };
     },
     enabled: !!user?.uid,
@@ -100,16 +155,52 @@ export default function Dashboard() {
     queryKey: ['studyGroups', user?.uid],
     queryFn: async () => {
       if (!user?.uid) return { count: 0, recent: [] };
-      const groupsRef = collection(db, 'groups');
-      const groupsQuery = query(
-        groupsRef,
-        where('members', 'array-contains', user.uid),
-        limit(3)
+      
+      const membershipsRef = collection(db, 'groupMemberships');
+      const userMembershipsQuery = query(
+        membershipsRef,
+        where('userId', '==', user.uid)
       );
-      const snapshot = await getDocs(groupsQuery);
+      
+      const emailMembershipsQuery = query(
+        membershipsRef,
+        where('email', '==', user.email)
+      );
+      
+      const [userIdResults, emailResults] = await Promise.all([
+        getDocs(userMembershipsQuery),
+        getDocs(emailMembershipsQuery)
+      ]);
+      
+      const uniqueGroupIds = new Set<string>();
+      
+      userIdResults.docs.forEach(doc => {
+        uniqueGroupIds.add(doc.data().groupId);
+      });
+      
+      emailResults.docs.forEach(doc => {
+        uniqueGroupIds.add(doc.data().groupId);
+      });
+      
+      const groupCount = uniqueGroupIds.size;
+      
+      const groupIds = Array.from(uniqueGroupIds).slice(0, 3);
+      const recentGroups = [];
+      
+      for (const groupId of groupIds) {
+        const groupRef = doc(db, 'studyGroups', groupId);
+        const groupSnap = await getDoc(groupRef);
+        if (groupSnap.exists()) {
+          recentGroups.push({
+            id: groupSnap.id,
+            ...groupSnap.data()
+          });
+        }
+      }
+      
       return {
-        count: snapshot.size,
-        recent: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        count: groupCount,
+        recent: recentGroups
       };
     },
     enabled: !!user?.uid,
@@ -153,7 +244,7 @@ export default function Dashboard() {
       title: 'Join study groups', 
       description: 'Connect with other learners', 
       path: '/dashboard/study-groups',
-      completed: !!groupsData?.count 
+      completed: !!(groupsData?.count && groupsData.count > 0)
     }
   ];
 
@@ -161,7 +252,7 @@ export default function Dashboard() {
 
   // If there's no activity data, provide some placeholder data
   const formattedActivity = recentActivity && recentActivity.length > 0 
-    ? recentActivity 
+    ? recentActivity as ActivityItem[]
     : [
         {
           id: '1',
