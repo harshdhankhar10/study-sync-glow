@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,6 +71,7 @@ export default function StudyGroups() {
         const groupsRef = collection(db, 'studyGroups');
         const membershipsRef = collection(db, 'groupMemberships');
         
+        // Query memberships based on both user ID and email
         const membershipQuery = query(
           membershipsRef,
           or(
@@ -81,9 +83,12 @@ export default function StudyGroups() {
         const membershipDocs = await getDocs(membershipQuery);
         const groupIds = membershipDocs.docs.map(doc => doc.data().groupId);
         
+        // Remove duplicates if any
+        const uniqueGroupIds = [...new Set(groupIds)];
+        
         const fetchedGroups: StudyGroup[] = [];
         
-        for (const gid of groupIds) {
+        for (const gid of uniqueGroupIds) {
           const groupDocRef = doc(db, 'studyGroups', gid);
           const groupDoc = await getDoc(groupDocRef);
           
@@ -111,12 +116,59 @@ export default function StudyGroups() {
           if (group) {
             setCurrentGroup(group);
           } else {
-            navigate('/dashboard/study-groups');
-            toast({
-              title: "Group not found",
-              description: "The study group you're looking for doesn't exist or you don't have access to it.",
-              variant: "destructive"
-            });
+            // If current group ID is provided but not found in user's groups,
+            // check if this group exists and the user has access to it
+            const groupDocRef = doc(db, 'studyGroups', groupId);
+            const groupDoc = await getDoc(groupDocRef);
+            
+            if (groupDoc.exists()) {
+              // Check if the user is a member of this group
+              const membershipCheck = query(
+                membershipsRef,
+                where('groupId', '==', groupId),
+                or(
+                  where('userId', '==', currentUser.uid),
+                  where('email', '==', currentUser.email)
+                )
+              );
+              
+              const membershipResult = await getDocs(membershipCheck);
+              
+              if (!membershipResult.empty) {
+                // User is a member, add this group
+                const groupData = groupDoc.data();
+                const group = {
+                  id: groupDoc.id,
+                  name: groupData.name,
+                  description: groupData.description,
+                  subject: groupData.subject,
+                  purpose: groupData.purpose,
+                  createdAt: groupData.createdAt.toDate(),
+                  updatedAt: groupData.updatedAt?.toDate() || groupData.createdAt.toDate(),
+                  membersCount: groupData.membersCount || 0,
+                  ownerId: groupData.ownerId,
+                  isPublic: groupData.isPublic
+                };
+                
+                setMyGroups(prev => [...prev, group]);
+                setCurrentGroup(group);
+              } else {
+                // User doesn't have access to this group
+                navigate('/dashboard/study-groups');
+                toast({
+                  title: "Group not found",
+                  description: "The study group you're looking for doesn't exist or you don't have access to it.",
+                  variant: "destructive"
+                });
+              }
+            } else {
+              navigate('/dashboard/study-groups');
+              toast({
+                title: "Group not found",
+                description: "The study group you're looking for doesn't exist or you don't have access to it.",
+                variant: "destructive"
+              });
+            }
           }
         }
       } catch (error) {

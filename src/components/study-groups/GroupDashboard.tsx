@@ -11,7 +11,9 @@ import {
   addDoc, 
   updateDoc, 
   serverTimestamp, 
-  Timestamp 
+  Timestamp,
+  or,
+  setDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -99,7 +101,7 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         // Determine current user's role in the group
         const userMembership = membersData.find(m => 
           m.email === currentUser.email || 
-          (m.id && m.id === currentUser.uid)
+          (currentUser.uid && m.id === currentUser.uid)
         );
         
         if (userMembership) {
@@ -148,8 +150,9 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         return;
       }
       
-      // Create a member document directly
-      await addDoc(collection(db, 'groupMemberships'), {
+      // Create a membership document with a unique ID (email-groupId)
+      const membershipId = `${inviteEmail.toLowerCase()}-${groupId}`;
+      await setDoc(doc(db, 'groupMemberships', membershipId), {
         groupId,
         email: inviteEmail.toLowerCase(),
         displayName: inviteEmail.split('@')[0], // Default display name from email
@@ -176,15 +179,26 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         membersCount: (group?.membersCount || 0) + 1
       });
       
-      // Reset form and close dialog
-      setInviteEmail('');
-      setInviteDialogOpen(false);
+      // Add the new member to local state
+      const newMember: StudyGroupMember = {
+        id: membershipId,
+        displayName: inviteEmail.split('@')[0],
+        email: inviteEmail.toLowerCase(),
+        role: 'member',
+        joinedAt: new Date()
+      };
       
-      // Update local state
+      setMembers(prev => [...prev, newMember]);
+      
+      // Update local group state
       setGroup(prev => prev ? {
         ...prev,
         membersCount: (prev.membersCount || 0) + 1
       } : null);
+      
+      // Reset form and close dialog
+      setInviteEmail('');
+      setInviteDialogOpen(false);
       
       toast({
         title: "Invitation sent",
