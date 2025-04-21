@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -125,11 +124,11 @@ export default function StudyGroups() {
               // Check if the user is a member of this group
               const membershipCheck = query(
                 membershipsRef,
-                where('groupId', '==', groupId),
                 or(
-                  where('userId', '==', currentUser.uid),
-                  where('email', '==', currentUser.email)
-                )
+                  where('groupId', '==', groupId),
+                  where('userId', '==', currentUser.uid)
+                ),
+                where('groupId', '==', groupId)
               );
               
               const membershipResult = await getDocs(membershipCheck);
