@@ -18,13 +18,14 @@ import {
   Clock,
   FileText,
   Flame,
-  LucideIcon,
   Settings,
   User,
   Users,
   Star,
-  Brain
+  Brain,
+  MessageSquare
 } from 'lucide-react';
+import { type LucideIcon } from 'lucide-react';
 
 interface SideNavItem {
   title: string;
@@ -56,7 +57,7 @@ const sidebarNavItems: SideNavItem[] = [
   {
     title: "Progress",
     href: "/dashboard/progress",
-    icon: LucideIcon,
+    icon: Clock,
   },
   {
     title: "Study Groups",
@@ -67,6 +68,11 @@ const sidebarNavItems: SideNavItem[] = [
     title: "AI Insights",
     href: "/dashboard/ai-insights",
     icon: Brain,
+  },
+  {
+    title: "MicroMentor",
+    href: "/dashboard/micro-mentor",
+    icon: MessageSquare,
   },
   {
     title: "Motivation",
