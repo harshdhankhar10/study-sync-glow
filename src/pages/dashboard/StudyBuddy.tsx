@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -27,6 +26,7 @@ import { AIMessage, UserMessage } from '@/components/study-buddy/MessageComponen
 import { generateAIResponse } from '@/lib/study-buddy';
 import ChatHistory from '@/components/study-buddy/ChatHistory';
 import { StudyContext } from '@/components/study-buddy/StudyContext';
+import { MotivationTracker } from '@/components/study-buddy/MotivationTracker';
 
 export default function StudyBuddy() {
   const { currentUser } = useAuth();
@@ -41,7 +41,6 @@ export default function StudyBuddy() {
   const [isProcessing, setIsProcessing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Fetch user's conversations
   useEffect(() => {
     const fetchConversations = async () => {
       if (!currentUser) return;
@@ -62,7 +61,6 @@ export default function StudyBuddy() {
         
         setConversations(conversationsData);
         
-        // Set the current conversation to the most recent one if exists
         if (conversationsData.length > 0 && !currentConversation) {
           setCurrentConversation(conversationsData[0].id);
           fetchMessages(conversationsData[0].id);
@@ -80,7 +78,6 @@ export default function StudyBuddy() {
     fetchConversations();
   }, [currentUser, toast]);
 
-  // Fetch user context data (skills, goals, notes, etc.)
   useEffect(() => {
     const fetchUserContext = async () => {
       if (!currentUser) return;
@@ -88,28 +85,24 @@ export default function StudyBuddy() {
       try {
         const userData: any = { userId: currentUser.uid };
         
-        // Fetch user profile
         const profileRef = doc(db, 'profiles', currentUser.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           userData.profile = profileSnap.data();
         }
         
-        // Fetch user skills
         const skillsRef = doc(db, 'skills', currentUser.uid);
         const skillsSnap = await getDoc(skillsRef);
         if (skillsSnap.exists()) {
           userData.skills = skillsSnap.data();
         }
         
-        // Fetch user goals
         const goalsRef = doc(db, 'goals', currentUser.uid);
         const goalsSnap = await getDoc(goalsRef);
         if (goalsSnap.exists()) {
           userData.goals = goalsSnap.data();
         }
         
-        // Fetch recent notes (limited to 5)
         const notesRef = collection(db, 'notes');
         const notesQuery = query(
           notesRef,
@@ -123,7 +116,6 @@ export default function StudyBuddy() {
           ...doc.data()
         }));
         
-        // Fetch upcoming study sessions
         const sessionsRef = collection(db, 'studySessions');
         const sessionsQuery = query(
           sessionsRef,
@@ -146,7 +138,6 @@ export default function StudyBuddy() {
     fetchUserContext();
   }, [currentUser]);
 
-  // Fetch messages for a specific conversation
   const fetchMessages = async (conversationId: string) => {
     if (!currentUser || !conversationId) return;
     
@@ -181,7 +172,6 @@ export default function StudyBuddy() {
     }
   };
 
-  // Create a new conversation
   const createNewConversation = async () => {
     if (!currentUser) return null;
     
@@ -196,7 +186,6 @@ export default function StudyBuddy() {
       
       const docRef = await addDoc(collection(db, 'aiConversations'), newConversation);
       
-      // Add to local state
       setConversations(prev => [
         {
           id: docRef.id,
@@ -222,26 +211,22 @@ export default function StudyBuddy() {
     }
   };
 
-  // Handle sending a message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!currentUser || !inputMessage.trim() || isProcessing) return;
     
-    // Don't send if previous response is still typing
     if (!typingComplete) return;
     
     setIsProcessing(true);
     
     try {
-      // If no conversation is selected, create a new one
       let conversationId = currentConversation;
       if (!conversationId) {
         conversationId = await createNewConversation();
         if (!conversationId) throw new Error('Failed to create conversation');
       }
       
-      // Add user message to Firestore
       const userMessage = {
         conversationId,
         senderId: currentUser.uid,
@@ -252,7 +237,6 @@ export default function StudyBuddy() {
       
       const userMessageRef = await addDoc(collection(db, 'aiMessages'), userMessage);
       
-      // Add message to local state immediately (for UI)
       const userMessageWithDate = {
         ...userMessage,
         id: userMessageRef.id,
@@ -262,17 +246,8 @@ export default function StudyBuddy() {
       setMessages(prev => [...prev, userMessageWithDate]);
       setInputMessage('');
       
-      // Update conversation info
       const conversationRef = doc(db, 'aiConversations', conversationId);
       
-      // Generate AI response
-      const userContext = contextData || {};
-      const conversationHistory = messages.map(msg => ({
-        role: msg.isUserMessage ? 'user' : 'assistant',
-        content: msg.content
-      }));
-      
-      // Start with an empty AI message for typing animation
       setTypingComplete(false);
       const tempAiMessage = {
         id: 'temp-' + Date.now(),
@@ -287,21 +262,21 @@ export default function StudyBuddy() {
       setMessages(prev => [...prev, tempAiMessage]);
       scrollToBottom();
       
-      // Generate the actual AI response
       const aiResponseText = await generateAIResponse(
         inputMessage, 
-        conversationHistory, 
-        userContext
+        messages.map(msg => ({
+          role: msg.isUserMessage ? 'user' : 'assistant',
+          content: msg.content
+        })),
+        contextData
       );
       
-      // Update typing message with the full response
       setMessages(prev => prev.map(msg => 
         msg.id === tempAiMessage.id 
           ? { ...msg, content: aiResponseText, isTyping: true } 
           : msg
       ));
       
-      // Add AI message to Firestore after animation completes
       const aiMessage = {
         conversationId,
         senderId: 'ai',
@@ -312,9 +287,7 @@ export default function StudyBuddy() {
       
       await addDoc(collection(db, 'aiMessages'), aiMessage);
       
-      // Update conversation with new title if it's the first message
       if (messages.length === 0) {
-        // Generate a title using the first message
         const title = inputMessage.length > 30 
           ? `${inputMessage.substring(0, 30)}...` 
           : inputMessage;
@@ -322,10 +295,9 @@ export default function StudyBuddy() {
         await addDoc(collection(db, 'aiConversations'), {
           title,
           updatedAt: serverTimestamp(),
-          messageCount: 2 // User message + AI response
+          messageCount: 2
         });
         
-        // Update local state
         setConversations(prev => 
           prev.map(conv => 
             conv.id === conversationId 
@@ -353,13 +325,11 @@ export default function StudyBuddy() {
     }
   };
 
-  // Handle selecting a conversation
   const handleSelectConversation = (conversationId: string) => {
     setCurrentConversation(conversationId);
     fetchMessages(conversationId);
   };
 
-  // Scroll to bottom of chat
   const scrollToBottom = () => {
     setTimeout(() => {
       if (scrollAreaRef.current) {
@@ -371,7 +341,6 @@ export default function StudyBuddy() {
     }, 100);
   };
 
-  // Handle typing completion
   const handleTypingComplete = () => {
     setTypingComplete(true);
     setMessages(prev => prev.map(msg => 
@@ -414,7 +383,7 @@ export default function StudyBuddy() {
           </CardContent>
         </Card>
 
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <Card className="h-[700px] flex flex-col">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2">
@@ -528,6 +497,27 @@ export default function StudyBuddy() {
               </Tabs>
             </div>
           </Card>
+        </div>
+
+        <div className="md:col-span-1">
+          <Tabs defaultValue="context" className="h-full">
+            <TabsList className="w-full">
+              <TabsTrigger value="context">Context</TabsTrigger>
+              <TabsTrigger value="motivation">Motivation</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="context" className="mt-4">
+              <StudyContext userData={contextData} />
+            </TabsContent>
+            
+            <TabsContent value="motivation" className="mt-4">
+              <MotivationTracker 
+                userId={currentUser?.uid || ''}
+                lastActive={contextData?.lastActive}
+                milestones={contextData?.milestones}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
