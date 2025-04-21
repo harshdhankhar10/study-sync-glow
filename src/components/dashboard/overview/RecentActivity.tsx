@@ -1,10 +1,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, BookOpen, Users, Check } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
-interface ActivityItem {
+export interface ActivityItem {
   id: string;
-  type: 'study' | 'group' | 'achievement';
+  type: 'study' | 'group' | 'achievement' | string;
   title: string;
   timestamp: string;
 }
@@ -27,6 +28,14 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
     }
   };
 
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    } catch (e) {
+      return timestamp;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -35,20 +44,26 @@ export default function RecentActivity({ activities = [] }: RecentActivityProps)
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {activities.map((activity) => (
-            <div
-              key={activity.id}
-              className="flex items-center space-x-4 rounded-lg border p-3 hover:bg-accent"
-            >
-              {getActivityIcon(activity.type)}
-              <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium">{activity.title}</p>
-                <p className="text-xs text-muted-foreground">
-                  {activity.timestamp}
-                </p>
+          {activities.length > 0 ? (
+            activities.map((activity) => (
+              <div
+                key={activity.id}
+                className="flex items-center space-x-4 rounded-lg border p-3 hover:bg-accent"
+              >
+                {getActivityIcon(activity.type)}
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium">{activity.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatTimestamp(activity.timestamp)}
+                  </p>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <p>No recent activity to display</p>
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>

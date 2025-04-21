@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,9 @@ export default function Dashboard() {
       const snapshot = await getDocs(activityQuery);
       return snapshot.docs.map(doc => ({
         id: doc.id,
+        type: doc.data().type || 'study',
+        title: doc.data().title || 'Study session',
+        timestamp: doc.data().timestamp || new Date().toISOString(),
         ...doc.data()
       }));
     },
@@ -155,6 +159,30 @@ export default function Dashboard() {
 
   const progress = Math.round((setupTasks.filter(task => task.completed).length / setupTasks.length) * 100);
 
+  // If there's no activity data, provide some placeholder data
+  const formattedActivity = recentActivity && recentActivity.length > 0 
+    ? recentActivity 
+    : [
+        {
+          id: '1',
+          type: 'study',
+          title: 'Completed a study session',
+          timestamp: new Date().toISOString()
+        },
+        {
+          id: '2',
+          type: 'achievement',
+          title: 'Earned a new badge',
+          timestamp: new Date(Date.now() - 86400000).toISOString()
+        },
+        {
+          id: '3',
+          type: 'group',
+          title: 'Joined a new study group',
+          timestamp: new Date(Date.now() - 172800000).toISOString()
+        }
+      ];
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -218,7 +246,7 @@ export default function Dashboard() {
 
         {/* Recent Activity */}
         <div className="md:col-span-2">
-          <RecentActivity activities={recentActivity || []} />
+          <RecentActivity activities={formattedActivity} />
         </div>
       </div>
     </div>
