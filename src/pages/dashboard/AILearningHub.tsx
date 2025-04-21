@@ -4,14 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { UserRound, Clock, Calendar, Mail, Brain } from 'lucide-react';
+import { UserRound, Clock, Calendar, Mail, Brain, BookOpen } from 'lucide-react';
 import DynamicRoleAssignment from '@/components/ai-learning/DynamicRoleAssignment';
 import SmartSessionBuilder from '@/components/ai-learning/SmartSessionBuilder';
 import DailyDigest from '@/components/ai-learning/DailyDigest';
 import FocusTimeline from '@/components/ai-learning/FocusTimeline';
+import FlashcardsAndQuizzes from '@/components/ai-learning/FlashcardsAndQuizzes';
 import { generateAIInsights } from '@/lib/ai';
 
 export default function AILearningHub() {
