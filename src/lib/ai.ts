@@ -1,5 +1,4 @@
-
-import { getFirestore, collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, doc, getDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 const GEMINI_API_KEY = "AIzaSyDSRbZYHWLdncHiadycyFvKyyuMu_BPIv8";
@@ -28,6 +27,34 @@ interface StudySession {
   topic: string;
   location: string;
   isAiGenerated: boolean;
+}
+
+interface SkillGapAnalysis {
+  skillArea: string;
+  currentLevel: number;
+  targetLevel: number;
+  gap: number;
+  suggestions: string[];
+}
+
+interface LearningTip {
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  resourceLinks?: string[];
+}
+
+interface WeeklyFeedback {
+  summary: string;
+  strengths: string[];
+  improvements: string[];
+  nextSteps: string[];
+}
+
+interface AIInsights {
+  weeklyFeedback: WeeklyFeedback;
+  skillGapAnalysis: SkillGapAnalysis[];
+  learningTips: LearningTip[];
 }
 
 export async function generateStudyPlan(userId: string, availabilitySlots: TimeSlot[]) {
@@ -386,5 +413,165 @@ export async function generateGroupMatches(
   } catch (error: any) {
     console.error("Error generating group matches:", error);
     throw new Error(`Failed to generate group matches: ${error.message}`);
+  }
+}
+
+export async function generateAIInsights(userId: string): Promise<AIInsights> {
+  try {
+    // Get user profile data
+    const profileRef = doc(db, 'profiles', userId);
+    const profileSnap = await getDoc(profileRef);
+    const profileData = profileSnap.exists() ? profileSnap.data() as Profile : null;
+
+    // Get user's skills and interests
+    let skills: string[] = [];
+    try {
+      const skillsRef = doc(db, 'skills', userId);
+      const skillsSnap = await getDoc(skillsRef);
+      if (skillsSnap.exists()) {
+        skills = skillsSnap.data()?.skills || [];
+      }
+    } catch (error) {
+      console.error("Error fetching skills:", error);
+    }
+
+    // Get user's learning goals
+    let goals: string[] = [];
+    try {
+      const goalsRef = doc(db, 'goals', userId);
+      const goalsSnap = await getDoc(goalsRef);
+      if (goalsSnap.exists()) {
+        goals = goalsSnap.data()?.goals || [];
+      }
+    } catch (error) {
+      console.error("Error fetching goals:", error);
+    }
+
+    // Get user's study sessions
+    const sessionsRef = collection(db, 'studySessions');
+    const q = query(sessionsRef, where('participants', 'array-contains', userId));
+    const querySnapshot = await getDocs(q);
+    const studySessions = querySnapshot.docs.map(doc => doc.data());
+
+    // Get user's notes
+    const notesRef = collection(db, 'notes');
+    const notesQuery = query(notesRef, where('userId', '==', userId));
+    const notesSnapshot = await getDocs(notesQuery);
+    const notes = notesSnapshot.docs.map(doc => doc.data());
+
+    // Format data for AI
+    const userData = {
+      profile: profileData,
+      skills: skills,
+      goals: goals,
+      studySessions: studySessions,
+      notes: notes
+    };
+
+    // Make API call to Gemini
+    const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Generate personalized AI insights for a student based on the following data:
+                
+                User Profile: ${JSON.stringify(profileData)}
+                Skills/Interests: ${JSON.stringify(skills)}
+                Learning Goals: ${JSON.stringify(goals)}
+                Study Sessions: ${JSON.stringify(studySessions)}
+                Notes: ${JSON.stringify(notes)}
+                
+                Please generate:
+                
+                1. Weekly Feedback:
+                   - A concise summary of the student's learning progress
+                   - 2-3 strengths to highlight
+                   - 2-3 areas for improvement
+                   - 2-3 specific next steps
+                
+                2. Skill Gap Analysis:
+                   - For 3-5 skill areas, provide:
+                     - Current estimated level (1-10)
+                     - Target level needed (1-10)
+                     - Gap analysis
+                     - 1-2 specific suggestions to improve
+                
+                3. Learning Tips:
+                   - 3-5 bite-sized learning improvement tips
+                   - Each tip should have a title, description, and priority level (high/medium/low)
+                   - Optional resource links or examples
+                
+                Return the insights as a valid JSON object with this structure:
+                {
+                  "weeklyFeedback": {
+                    "summary": "string",
+                    "strengths": ["string"],
+                    "improvements": ["string"],
+                    "nextSteps": ["string"]
+                  },
+                  "skillGapAnalysis": [
+                    {
+                      "skillArea": "string",
+                      "currentLevel": number,
+                      "targetLevel": number,
+                      "gap": number,
+                      "suggestions": ["string"]
+                    }
+                  ],
+                  "learningTips": [
+                    {
+                      "title": "string",
+                      "description": "string",
+                      "priority": "high|medium|low",
+                      "resourceLinks": ["string"]
+                    }
+                  ]
+                }`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2048,
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract the JSON from the text response
+    let jsonText = data.candidates[0].content.parts[0].text;
+    
+    // Find JSON content (between curly braces)
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("Could not parse AI response");
+    }
+    
+    const insights = JSON.parse(jsonMatch[0]);
+
+    // Store insights in Firestore
+    await setDoc(doc(db, 'aiInsights', userId), {
+      ...insights,
+      createdAt: new Date(),
+      userId: userId
+    });
+    
+    return insights as AIInsights;
+    
+  } catch (error: any) {
+    console.error("Error generating AI insights:", error);
+    throw new Error(`Failed to generate AI insights: ${error.message}`);
   }
 }

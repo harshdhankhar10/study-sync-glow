@@ -28,7 +28,8 @@ import {
   Book,
   BarChart3,
   BookOpen,
-  Users
+  Users,
+  Lightbulb
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { title: 'Notes', href: '/dashboard/notes', icon: Book },
     { title: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
     { title: 'Study Groups', href: '/dashboard/study-groups', icon: Users },
+    { title: 'AI Insights', href: '/dashboard/ai-insights', icon: Lightbulb },
   ];
 
   const accountLinks: SidebarLink[] = [
