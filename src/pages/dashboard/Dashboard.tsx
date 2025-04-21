@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -146,62 +147,6 @@ export default function Dashboard() {
       );
       const snapshot = await getDocs(sessionsQuery);
       return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-    enabled: !!user?.uid,
-  });
-
-  // Fetch study groups count
-  const { data: groupsData } = useQuery({
-    queryKey: ['studyGroups', user?.uid],
-    queryFn: async () => {
-      if (!user?.uid) return { count: 0, recent: [] };
-      
-      const membershipsRef = collection(db, 'groupMemberships');
-      const userMembershipsQuery = query(
-        membershipsRef,
-        where('userId', '==', user.uid)
-      );
-      
-      const emailMembershipsQuery = query(
-        membershipsRef,
-        where('email', '==', user.email)
-      );
-      
-      const [userIdResults, emailResults] = await Promise.all([
-        getDocs(userMembershipsQuery),
-        getDocs(emailMembershipsQuery)
-      ]);
-      
-      const uniqueGroupIds = new Set<string>();
-      
-      userIdResults.docs.forEach(doc => {
-        uniqueGroupIds.add(doc.data().groupId);
-      });
-      
-      emailResults.docs.forEach(doc => {
-        uniqueGroupIds.add(doc.data().groupId);
-      });
-      
-      const groupCount = uniqueGroupIds.size;
-      
-      const groupIds = Array.from(uniqueGroupIds).slice(0, 3);
-      const recentGroups = [];
-      
-      for (const groupId of groupIds) {
-        const groupRef = doc(db, 'studyGroups', groupId);
-        const groupSnap = await getDoc(groupRef);
-        if (groupSnap.exists()) {
-          recentGroups.push({
-            id: groupSnap.id,
-            ...groupSnap.data()
-          });
-        }
-      }
-      
-      return {
-        count: groupCount,
-        recent: recentGroups
-      };
     },
     enabled: !!user?.uid,
   });
