@@ -1,8 +1,8 @@
 import { getFirestore, collection, addDoc, doc, getDoc, query, where, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-const GEMINI_API_KEY = "AIzaSyDSRbZYHWLdncHiadycyFvKyyuMu_BPIv8";
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+export const GEMINI_API_KEY = "AIzaSyDSRbZYHWLdncHiadycyFvKyyuMu_BPIv8";
+export const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 interface TimeSlot {
   day: string;
