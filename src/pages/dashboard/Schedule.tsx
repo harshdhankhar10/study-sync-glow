@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clock, Calendar as CalendarIcon, UserPlus, Plus } from 'lucide-react';
+import { Clock, Calendar as CalendarIcon, UserPlus, Plus, BookText } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +13,7 @@ import StudySessionCard from '@/components/dashboard/StudySessionCard';
 import WeeklyScheduleView from '@/components/dashboard/WeeklyScheduleView';
 import CalendarSyncDialog from '@/components/dashboard/CalendarSyncDialog';
 import CreateSessionDialog from '@/components/dashboard/CreateSessionDialog';
+import StudyPlanList from '@/components/dashboard/StudyPlanList';
 import { generateStudyPlan } from '@/lib/ai';
 
 const db = getFirestore();
@@ -38,13 +38,11 @@ export default function Schedule() {
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const { toast } = useToast();
 
-  // Get current user
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => auth.currentUser,
   });
 
-  // Fetch user's availability
   const { data: availabilityData } = useQuery({
     queryKey: ['availability', user?.uid],
     queryFn: async () => {
@@ -56,7 +54,6 @@ export default function Schedule() {
     enabled: !!user?.uid,
   });
 
-  // Fetch study sessions
   const { data: studySessions, refetch: refetchSessions } = useQuery({
     queryKey: ['studySessions', user?.uid],
     queryFn: async () => {
@@ -78,7 +75,6 @@ export default function Schedule() {
     enabled: !!user?.uid,
   });
 
-  // Upcoming sessions (next 7 days)
   const upcomingSessions = studySessions?.filter(session => {
     const sessionDate = new Date(session.date);
     const now = new Date();
@@ -87,20 +83,19 @@ export default function Schedule() {
     return sessionDate >= now && sessionDate <= sevenDaysLater;
   }).sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // Sessions for selected date
   const sessionsForSelectedDate = studySessions?.filter(session => {
     if (!selectedDate) return false;
     const sessionDate = new Date(session.date);
     return sessionDate.toDateString() === selectedDate.toDateString();
   }).sort((a, b) => {
-    // Sort by start time
     const aTime = a.startTime.split(':').map(Number);
     const bTime = b.startTime.split(':').map(Number);
     if (aTime[0] !== bTime[0]) return aTime[0] - bTime[0];
     return aTime[1] - bTime[1];
   });
 
-  // Function to generate AI study plan
+  const hasAvailability = availabilityData?.timeSlots?.some(slot => slot.selected);
+
   const handleGenerateStudyPlan = async () => {
     if (!user?.uid || !availabilityData?.timeSlots) {
       toast({
@@ -129,9 +124,6 @@ export default function Schedule() {
       setIsGeneratingPlan(false);
     }
   };
-
-  // Determines if the user has set availability
-  const hasAvailability = availabilityData?.timeSlots?.some(slot => slot.selected);
 
   return (
     <div className="space-y-6">
@@ -170,13 +162,14 @@ export default function Schedule() {
       </div>
 
       <Tabs defaultValue="weekly" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="weekly">Weekly View</TabsTrigger>
           <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+          <TabsTrigger value="study-plans">AI Study Plans</TabsTrigger>
         </TabsList>
         
         <TabsContent value="weekly" className="mt-4">
-          <WeeklyScheduleView sessions={studySessions || []} />
+          <WeeklyScheduleView sessions={studySessions || []} onCreateSession={() => setShowCreateSession(true)} />
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">
@@ -282,6 +275,32 @@ export default function Schedule() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="study-plans" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>AI Generated Study Plans</CardTitle>
+                  <CardDescription>
+                    Your personalized study sessions created by AI
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={handleGenerateStudyPlan}
+                  disabled={isGeneratingPlan || !hasAvailability}
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                >
+                  <BookText className="mr-2 h-4 w-4" />
+                  {isGeneratingPlan ? "Generating..." : "Generate New Plan"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <StudyPlanList sessions={studySessions || []} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
