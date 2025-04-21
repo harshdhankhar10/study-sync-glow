@@ -2,7 +2,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarHeader, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
-import { User, Calendar, BookOpen, Award, LogOut } from 'lucide-react';
+import { User, Calendar, BookOpen, Award, LogOut, Clock } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -29,6 +29,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setActivePage('goals');
     } else if (path.includes('/dashboard/skills')) {
       setActivePage('skills');
+    } else if (path.includes('/dashboard/schedule')) {
+      setActivePage('schedule');
     } else if (path === '/dashboard') {
       setActivePage('dashboard');
     }
@@ -57,6 +59,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { id: 'availability', title: 'Availability', icon: Calendar, url: '/dashboard/availability' },
     { id: 'goals', title: 'Learning Goals', icon: BookOpen, url: '/dashboard/goals' },
     { id: 'skills', title: 'Skills & Interests', icon: Award, url: '/dashboard/skills' },
+    { id: 'schedule', title: 'Study Schedule', icon: Clock, url: '/dashboard/schedule' },
   ];
 
   return (
