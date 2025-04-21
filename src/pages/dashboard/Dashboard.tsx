@@ -1,13 +1,14 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, Clock, UserPlus, Calendar, TrendingUp, Users, BookOpen, Target } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { ChevronRight } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
+import StudyMetrics from '@/components/dashboard/overview/StudyMetrics';
+import RecentActivity from '@/components/dashboard/overview/RecentActivity';
 
 const db = getFirestore();
 
@@ -21,6 +22,43 @@ export default function Dashboard() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Fetch study metrics
+  const { data: metricsData } = useQuery({
+    queryKey: ['studyMetrics', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return null;
+      const metricsRef = doc(db, 'metrics', user.uid);
+      const metricsSnap = await getDoc(metricsRef);
+      return metricsSnap.exists() ? metricsSnap.data() : {
+        studyTime: 0,
+        completedTasks: 0,
+        activeGroups: 0
+      };
+    },
+    enabled: !!user?.uid,
+  });
+
+  // Fetch recent activity
+  const { data: recentActivity } = useQuery({
+    queryKey: ['recentActivity', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return [];
+      const activityRef = collection(db, 'activity');
+      const activityQuery = query(
+        activityRef,
+        where('userId', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(5)
+      );
+      const snapshot = await getDocs(activityQuery);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    },
+    enabled: !!user?.uid,
+  });
 
   // Fetch user profile data
   const { data: profileData } = useQuery({
@@ -119,17 +157,26 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Welcome Section */}
       <div>
         <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           Welcome back{profileData?.fullName ? `, ${profileData.fullName}` : ''}!
         </h2>
         <p className="text-gray-500 mt-1">
-          Here's an overview of your learning journey
+          Here's your learning progress overview
         </p>
       </div>
 
+      {/* Study Metrics */}
+      <StudyMetrics 
+        studyTime={metricsData?.studyTime || 0}
+        completedTasks={metricsData?.completedTasks || 0}
+        activeGroups={groupsData?.count || 0}
+        goalsProgress={progress}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Progress Overview */}
+        {/* Setup Progress Card */}
         <Card>
           <CardHeader>
             <CardTitle>Profile Setup</CardTitle>
@@ -169,79 +216,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Upcoming Sessions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Sessions</CardTitle>
-            <CardDescription>Your next study sessions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {upcomingSessions?.length ? (
-              <div className="space-y-4">
-                {upcomingSessions.map((session: any) => (
-                  <div key={session.id} className="flex items-start gap-3 p-3 rounded-lg border">
-                    <Calendar className="h-5 w-5 text-indigo-500 mt-0.5" />
-                    <div className="flex-1">
-                      <h3 className="font-medium">{session.title}</h3>
-                      <p className="text-gray-500 text-sm">
-                        {new Date(session.date.seconds * 1000).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <Clock className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">No upcoming sessions</p>
-                <Button
-                  className="mt-4"
-                  variant="outline"
-                  onClick={() => navigate('/dashboard/schedule')}
-                >
-                  Schedule a Session
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Study Groups */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Study Groups</CardTitle>
-            <CardDescription>Your learning communities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {groupsData?.count ? (
-              <div className="space-y-4">
-                {groupsData.recent.map((group: any) => (
-                  <div key={group.id} className="flex items-start gap-3 p-3 rounded-lg border">
-                    <Users className="h-5 w-5 text-indigo-500 mt-0.5" />
-                    <div className="flex-1">
-                      <h3 className="font-medium">{group.name}</h3>
-                      <p className="text-gray-500 text-sm">
-                        {group.members?.length || 0} members
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <Users className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">No study groups joined yet</p>
-                <Button
-                  className="mt-4"
-                  variant="outline"
-                  onClick={() => navigate('/dashboard/study-groups')}
-                >
-                  Find Groups
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Recent Activity */}
+        <div className="md:col-span-2">
+          <RecentActivity activities={recentActivity || []} />
+        </div>
       </div>
     </div>
   );
