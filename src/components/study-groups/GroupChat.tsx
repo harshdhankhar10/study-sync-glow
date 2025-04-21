@@ -30,9 +30,6 @@ interface GroupChatProps {
   groupName: string;
 }
 
-// Add socket.io dependency 
-<lov-add-dependency>socket.io-client@4.7.2</lov-add-dependency>
-
 export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const { currentUser } = useAuth();
   const { toast } = useToast();

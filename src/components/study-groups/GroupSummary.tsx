@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -35,7 +34,6 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
   const [summaries, setSummaries] = useState<StudyGroupSummary[]>([]);
   const [generatingSummary, setGeneratingSummary] = useState(false);
 
-  // Load summaries
   useEffect(() => {
     async function loadSummaries() {
       if (!currentUser || !groupId) return;
@@ -43,7 +41,6 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
       try {
         setLoading(true);
         
-        // Fetch summaries
         const summariesRef = collection(db, 'groupSummaries');
         const summariesQuery = query(
           summariesRef,
@@ -80,14 +77,12 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
     loadSummaries();
   }, [currentUser, groupId, toast]);
 
-  // Generate new AI summary
   const handleGenerateSummary = async () => {
     if (!currentUser || !groupId) return;
     
     try {
       setGeneratingSummary(true);
       
-      // Get group details
       const groupDoc = await getDoc(doc(db, 'studyGroups', groupId));
       if (!groupDoc.exists()) {
         throw new Error("Group not found");
@@ -95,7 +90,6 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
       
       const groupData = groupDoc.data();
       
-      // Get recent messages
       const messagesRef = collection(db, 'groupMessages');
       const messagesQuery = query(
         messagesRef,
@@ -114,7 +108,6 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
         };
       });
       
-      // Get recent resources
       const resourcesRef = collection(db, 'groupResources');
       const resourcesQuery = query(
         resourcesRef,
@@ -133,7 +126,6 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
         };
       });
       
-      // Use the Gemini integration from lib/ai.ts to generate a summary
       const inputData = {
         groupName: groupData.name,
         groupPurpose: groupData.purpose,
@@ -142,11 +134,9 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
         resources: resources
       };
 
-      // Import the Gemini API key
       const GEMINI_API_KEY = "AIzaSyDSRbZYHWLdncHiadycyFvKyyuMu_BPIv8";
       const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
       
-      // Make the AI call
       const aiResponse = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
@@ -194,11 +184,10 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
       const aiData = await aiResponse.json();
       const summaryText = aiData.candidates[0].content.parts[0].text;
       
-      // Extract topics from the summary
+      let extractedTopics: string[] = [];
       const topicsRegex = /key topics that were covered:?\s*([\s\S]*?)(?:\n\n|$)/i;
       const topicsMatch = summaryText.match(topicsRegex);
       
-      let extractedTopics: string[] = [];
       if (topicsMatch && topicsMatch[1]) {
         extractedTopics = topicsMatch[1]
           .split('\n')
@@ -206,7 +195,6 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
           .filter(topic => topic.length > 0);
       }
       
-      // Create a new summary document
       const newSummaryRef = await addDoc(collection(db, 'groupSummaries'), {
         groupId,
         content: summaryText,
@@ -216,11 +204,9 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
         generatedBy: currentUser.uid
       });
       
-      // Get the complete new summary
       const newSummaryDoc = await getDoc(newSummaryRef);
       const newSummaryData = newSummaryDoc.data();
       
-      // Add to state
       const newSummary: StudyGroupSummary = {
         id: newSummaryRef.id,
         content: newSummaryData?.content,
@@ -349,7 +335,7 @@ export default function GroupSummary({ groupId }: GroupSummaryProps) {
                 )}
               </CardContent>
               <CardFooter className="text-xs text-muted-foreground border-t pt-3">
-                <Alert variant="info" className="bg-blue-50 border-blue-100">
+                <Alert variant="default" className="bg-blue-50 border-blue-100">
                   <AlertTriangle className="h-4 w-4 text-blue-500" />
                   <AlertTitle>AI-Generated Content</AlertTitle>
                   <AlertDescription>
