@@ -1,7 +1,6 @@
 
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
@@ -21,51 +20,49 @@ import Progress from "./pages/dashboard/Progress";
 import StudyGroups from "./pages/dashboard/StudyGroups";
 import GroupMatch from "./pages/dashboard/GroupMatch";
 import AIInsights from "./pages/dashboard/AIInsights";
-import Settings from "./pages/dashboard/Settings";  // Add this import
+import Settings from "./pages/dashboard/Settings";
 
 function App() {
   const queryClient = new QueryClient();
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            
-            {/* Dashboard Routes */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <DashboardRoot />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="availability" element={<Availability />} />
-              <Route path="goals" element={<Goals />} />
-              <Route path="skills" element={<Skills />} />
-              <Route path="schedule" element={<Schedule />} />
-              <Route path="notes" element={<Notes />} />
-              <Route path="progress" element={<Progress />} />
-              <Route path="study-groups" element={<StudyGroups />} />
-              <Route path="study-groups/:groupId" element={<StudyGroups />} />
-              <Route path="group-match" element={<GroupMatch />} />
-              <Route path="ai-insights" element={<AIInsights />} />
-              <Route path="settings" element={<Settings />} /> {/* Add this route */}
-            </Route>
-            
-            <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          
+          {/* Dashboard Routes */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardRoot />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Dashboard />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="availability" element={<Availability />} />
+            <Route path="goals" element={<Goals />} />
+            <Route path="skills" element={<Skills />} />
+            <Route path="schedule" element={<Schedule />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="progress" element={<Progress />} />
+            <Route path="study-groups" element={<StudyGroups />} />
+            <Route path="study-groups/:groupId" element={<StudyGroups />} />
+            <Route path="group-match" element={<GroupMatch />} />
+            <Route path="ai-insights" element={<AIInsights />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          
+          <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
