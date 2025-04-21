@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -78,6 +77,13 @@ const toolsNavItems: SidebarSectionType = {
       href: "/dashboard/skillmatch-grid",
       icon: Globe,
       isGlobal: true,
+    },
+    {
+      title: "Flashcards & Quizzes",
+      href: "/dashboard/flashcards-quizzes",
+      icon: Book,
+      badge: "New",
+      isFeatured: true,
     },
   ],
 };
