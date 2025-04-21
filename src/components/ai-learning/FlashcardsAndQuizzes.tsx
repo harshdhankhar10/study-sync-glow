@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,22 @@ import { useToast } from '@/hooks/use-toast';
 import { Brain, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { generateFlashcardsForTopic, generateQuizForTopic } from '@/lib/flashcards-ai';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const STUDY_TOPICS = [
+  "Study Techniques & Time Management",
+  "Research & Academic Writing",
+  "Critical Thinking & Analysis",
+  "Goal Setting & Academic Planning",
+  "Exam Preparation Strategies",
+  "Note-Taking Methods",
+  "Memory & Retention Techniques",
+  "Academic Productivity Tools",
+  "Stress Management for Students",
+  "Group Study Dynamics"
+];
 
 export function FlashcardsAndQuizzes() {
   const [activeTab, setActiveTab] = useState('flashcards');
@@ -17,6 +31,8 @@ export function FlashcardsAndQuizzes() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState(STUDY_TOPICS[0]);
+  const [userContext, setUserContext] = useState<any>(null);
   const { toast } = useToast();
   const { currentUser } = useAuth();
 
@@ -65,53 +81,62 @@ export function FlashcardsAndQuizzes() {
     }
   };
 
-  const handleGenerateContent = async () => {
+  const loadUserContext = async () => {
     if (!currentUser) return;
+
+    try {
+      const [profileDoc, skillsDoc, goalsDoc] = await Promise.all([
+        getDoc(doc(db, 'profiles', currentUser.uid)),
+        getDoc(doc(db, 'skills', currentUser.uid)),
+        getDoc(doc(db, 'goals', currentUser.uid))
+      ]);
+
+      setUserContext({
+        major: profileDoc.data()?.major,
+        skills: skillsDoc.data()?.skills || [],
+        goals: goalsDoc.data()?.goals || []
+      });
+    } catch (error) {
+      console.error('Error loading user context:', error);
+    }
+  };
+
+  const handleGenerateContent = async () => {
+    if (!currentUser || !userContext) return;
 
     try {
       setGenerating(true);
       toast({
         title: 'Generating content',
-        description: 'AI is creating personalized flashcards and quizzes...',
+        description: `AI is creating personalized content for ${selectedTopic}...`,
       });
 
-      // Get user's study data for context
-      const profileRef = doc(db, 'profiles', currentUser.uid);
-      const skillsRef = doc(db, 'skills', currentUser.uid);
-      const goalsRef = doc(db, 'goals', currentUser.uid);
-
-      const [profileSnap, skillsSnap, goalsSnap] = await Promise.all([
-        getDocs(query(collection(db, 'profiles'), where('userId', '==', currentUser.uid))),
-        getDocs(query(collection(db, 'skills'), where('userId', '==', currentUser.uid))),
-        getDocs(query(collection(db, 'goals'), where('userId', '==', currentUser.uid)))
+      const [newFlashcards, newQuiz] = await Promise.all([
+        generateFlashcardsForTopic(selectedTopic, userContext),
+        generateQuizForTopic(selectedTopic, userContext)
       ]);
 
-      // Generate content using AI
-      // This would typically call your AI service
-      // For now, let's add some sample data
-      const newFlashcard: Flashcard = {
-        id: `flashcard-${Date.now()}`,
-        question: "What is spaced repetition?",
-        answer: "A learning technique that involves reviewing information at gradually increasing intervals.",
-        topic: "Study Methods",
-        difficulty: "medium",
-        timesReviewed: 0,
-        lastReviewed: new Date(),
-        nextReview: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-      };
+      // Save flashcards to Firebase
+      await Promise.all(newFlashcards.map(flashcard =>
+        setDoc(doc(collection(db, 'flashcards'), flashcard.id), {
+          ...flashcard,
+          userId: currentUser.uid,
+          createdAt: Timestamp.now(),
+        })
+      ));
 
-      await setDoc(doc(collection(db, 'flashcards'), newFlashcard.id), {
-        ...newFlashcard,
+      // Save quiz to Firebase
+      await setDoc(doc(collection(db, 'quizzes'), newQuiz.id), {
+        ...newQuiz,
         userId: currentUser.uid,
         createdAt: Timestamp.now(),
       });
 
       toast({
         title: 'Success',
-        description: 'New flashcards and quizzes have been generated!',
+        description: 'New learning materials have been generated!',
       });
 
-      // Reload content
       loadUserContent();
     } catch (error) {
       console.error('Error generating content:', error);
@@ -185,28 +210,42 @@ export function FlashcardsAndQuizzes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-medium">Flashcards & Quizzes</h3>
           <p className="text-sm text-gray-500">
             Review your knowledge with AI-generated learning materials
           </p>
         </div>
-        <Button
-          onClick={handleGenerateContent}
-          disabled={generating}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-        >
-          {generating ? (
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : (
-            <Brain className="w-4 h-4 mr-2" />
-          )}
-          Generate New Content
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Select value={selectedTopic} onValueChange={setSelectedTopic}>
+            <SelectTrigger className="w-[240px]">
+              <SelectValue placeholder="Select a topic" />
+            </SelectTrigger>
+            <SelectContent>
+              {STUDY_TOPICS.map((topic) => (
+                <SelectItem key={topic} value={topic}>
+                  {topic}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleGenerateContent}
+            disabled={generating}
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+          >
+            {generating ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Brain className="w-4 h-4 mr-2" />
+            )}
+            Generate Content
+          </Button>
+        </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="flashcards" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
           <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
