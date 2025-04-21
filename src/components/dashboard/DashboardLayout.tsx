@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sheet,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { 
   Menu, Brain, Calendar, FileText, Star, Users, Settings, 
-  User, Book, LineChart, LogOut, Target, Globe, Layout
+  User, Book, LineChart, LogOut, Target, Globe, Layout, MessageSquare
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarSection } from "./sidebar/SidebarSection";
 import { SidebarItem, SidebarSection as SidebarSectionType } from "@/types/sidebar";
+import { createDemoForumData } from "@/services/createDemoForumData";
 
 const mainNavItems: SidebarSectionType = {
   title: "Main Navigation",
@@ -38,32 +39,15 @@ const mainNavItems: SidebarSectionType = {
       href: "/dashboard/notes",
       icon: FileText,
     },
-  ],
-};
-
-const goalItems: SidebarSectionType = {
-  title: "Goals & Progress",
-  items: [
     {
       title: "Goals",
       href: "/dashboard/goals",
       icon: Target,
-      isFeatured: true,
-    },
-    {
-      title: "Skills",
-      href: "/dashboard/skills",
-      icon: Star,
-    },
-    {
-      title: "Progress",
-      href: "/dashboard/progress",
-      icon: LineChart,
     },
   ],
 };
 
-const learningItems: SidebarSectionType = {
+const learningNavItems: SidebarSectionType = {
   title: "Learning Tools",
   items: [
     {
@@ -102,6 +86,29 @@ const communityItems: SidebarSectionType = {
       icon: Users,
       isGlobal: true,
     },
+    {
+      title: "Community Forum",
+      href: "/dashboard/community-forum",
+      icon: MessageSquare,
+      isGlobal: true,
+      badge: "New",
+    },
+  ],
+};
+
+const progressItems: SidebarSectionType = {
+  title: "Progress & Analytics",
+  items: [
+    {
+      title: "Skills",
+      href: "/dashboard/skills",
+      icon: Star,
+    },
+    {
+      title: "Progress",
+      href: "/dashboard/progress",
+      icon: LineChart,
+    },
   ],
 };
 
@@ -127,6 +134,13 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  useEffect(() => {
+    // Create demo forum data when user first visits
+    if (currentUser) {
+      createDemoForumData(currentUser.uid, currentUser.displayName || 'User');
+    }
+  }, [currentUser]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -145,22 +159,22 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           onItemClick={() => setIsMenuOpen(false)}
         />
         
-        <SidebarSection
-          section={goalItems}
-          currentPath={location.pathname}
-          onItemClick={() => setIsMenuOpen(false)}
-        />
-
         <Separator className="opacity-50" />
         
         <SidebarSection
-          section={learningItems}
+          section={learningNavItems}
           currentPath={location.pathname}
           onItemClick={() => setIsMenuOpen(false)}
         />
 
         <SidebarSection
           section={communityItems}
+          currentPath={location.pathname}
+          onItemClick={() => setIsMenuOpen(false)}
+        />
+        
+        <SidebarSection
+          section={progressItems}
           currentPath={location.pathname}
           onItemClick={() => setIsMenuOpen(false)}
         />
