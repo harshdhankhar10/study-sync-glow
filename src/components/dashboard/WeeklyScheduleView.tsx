@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { StudySession } from '@/pages/dashboard/Schedule';
 import { cn } from '@/lib/utils';
@@ -58,7 +58,10 @@ export default function WeeklyScheduleView({ sessions, onCreateSession }: Weekly
         <div className="text-xs text-gray-500">
           {date.toLocaleDateString('en-US', { weekday: 'short' })}
         </div>
-        <div className={`text-lg font-semibold ${isToday ? 'bg-indigo-600 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+        <div className={cn(
+          "text-lg font-semibold flex items-center justify-center mx-auto h-8 w-8",
+          isToday && "bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full"
+        )}>
           {date.getDate()}
         </div>
       </div>
@@ -117,26 +120,46 @@ export default function WeeklyScheduleView({ sessions, onCreateSession }: Weekly
     const [hour] = timeSlot.split(':').map(Number);
     
     return getSessionsForDay(day).filter(session => {
-      const [startHour] = session.startTime.split(':').map(Number);
+      const [startHour, startMinute] = session.startTime.split(':').map(Number);
       const [endHour, endMinute] = session.endTime.split(':').map(Number);
       
-      return startHour <= hour && (endHour > hour || (endHour === hour && endMinute > 0));
+      // Fix session display logic to ensure all sessions appear
+      // A session appears in this time slot if:
+      // 1. It starts during this hour, OR
+      // 2. It's ongoing during this hour (started before and ends after)
+      return (
+        (startHour === hour) || 
+        (startHour < hour && (endHour > hour || (endHour === hour && endMinute > 0)))
+      );
     });
   };
 
+  // Check if this is the starting time slot for a session
+  const isStartingTimeSlot = (session: StudySession, hour: number) => {
+    const [startHour] = session.startTime.split(':').map(Number);
+    return startHour === hour;
+  };
+
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border border-gray-200 shadow-sm">
+      <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20">
         <div className="flex justify-between items-center">
-          <CardTitle>Weekly Schedule</CardTitle>
+          <div>
+            <CardTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Weekly Schedule</CardTitle>
+            <CardDescription className="font-medium">{getWeekHeader()}</CardDescription>
+          </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')}>Previous</Button>
-            <Button variant="outline" size="sm" onClick={() => navigateWeek('next')}>Next</Button>
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('prev')} className="hover:border-indigo-300">
+              <CalendarIcon className="mr-1 h-4 w-4" /> Previous
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => navigateWeek('next')} className="hover:border-indigo-300">
+              <CalendarIcon className="mr-1 h-4 w-4" /> Next
+            </Button>
             {onCreateSession && (
               <Button 
                 size="sm" 
                 onClick={onCreateSession}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Session
@@ -144,16 +167,15 @@ export default function WeeklyScheduleView({ sessions, onCreateSession }: Weekly
             )}
           </div>
         </div>
-        <CardDescription>{getWeekHeader()}</CardDescription>
       </CardHeader>
       <CardContent className="p-0 overflow-x-auto">
         <div className="min-w-[800px]">
           {/* Timeline view */}
           <div className="grid grid-cols-8 gap-px bg-gray-200">
             {/* Time column */}
-            <div className="bg-white pt-10">
+            <div className="bg-white dark:bg-gray-950 pt-10">
               {timeSlots.map((time, index) => (
-                <div key={`time-${index}`} className="h-12 border-t pr-2 text-right text-xs text-gray-500">
+                <div key={`time-${index}`} className="h-12 border-t border-gray-100 pr-2 text-right text-xs text-gray-500 font-medium">
                   {time}
                 </div>
               ))}
@@ -161,60 +183,50 @@ export default function WeeklyScheduleView({ sessions, onCreateSession }: Weekly
             
             {/* Day columns */}
             {currentWeek.map((day, dayIndex) => (
-              <div key={`day-${dayIndex}`} className="bg-white">
+              <div key={`day-${dayIndex}`} className="bg-white dark:bg-gray-950">
                 {/* Day header */}
-                <div className="py-2 text-center sticky top-0 bg-white z-10">
+                <div className="py-2 text-center sticky top-0 bg-white dark:bg-gray-950 z-10 border-b border-gray-100">
                   {formatDayHeader(day)}
                 </div>
                 
                 {/* Time slots */}
                 <div className="relative">
                   {timeSlots.map((time, timeIndex) => {
-                    const sessions = getSessionsForTimeSlot(day, time);
+                    const hourSessions = getSessionsForTimeSlot(day, time);
+                    const currentHour = parseInt(time.split(':')[0]);
                     
                     return (
                       <div 
                         key={`slot-${dayIndex}-${timeIndex}`} 
                         className={cn(
-                          "h-12 border-t relative",
-                          sessions.length > 0 ? "bg-gray-50" : "bg-white"
+                          "h-12 border-t border-gray-100 relative",
+                          timeIndex % 2 === 0 ? "bg-gray-50/50 dark:bg-gray-900/20" : "bg-white dark:bg-gray-950"
                         )}
                       >
-                        {sessions.map((session, sessionIndex) => {
-                          // Calculate position and height based on start/end times
-                          const [startHour, startMinute] = session.startTime.split(':').map(Number);
-                          const [endHour, endMinute] = session.endTime.split(':').map(Number);
-                          const currentHour = parseInt(time.split(':')[0]);
-                          
+                        {hourSessions.map((session, sessionIndex) => {
                           // Only render if this is the first occurrence of the session
-                          const isFirstOccurrence = !getSessionsForTimeSlot(day, 
-                            timeIndex > 0 ? timeSlots[timeIndex - 1] : "00:00"
-                          ).some(s => s.id === session.id);
-                          
-                          if (!isFirstOccurrence) return null;
+                          // based on its start time
+                          if (!isStartingTimeSlot(session, currentHour)) return null;
                           
                           // Calculate duration in hours
-                          const durationHours = (endHour - startHour) + (endMinute - startMinute) / 60;
+                          const [startHour, startMinute] = session.startTime.split(':').map(Number);
+                          const [endHour, endMinute] = session.endTime.split(':').map(Number);
+                          const durationHours = ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60;
                           
                           // Position from top of current hour slot
-                          const topOffset = startHour === currentHour 
-                            ? (startMinute / 60) * 48 // 48px is the height of the time slot
-                            : 0;
+                          const topOffset = (startMinute / 60) * 48; // 48px is the height of the time slot
                             
                           // Height based on duration
-                          const height = Math.max(48, durationHours * 48); // Minimum height of 36px
-                          
-                          // Only show if start time is visible
-                          if (startHour < currentHour || startHour > currentHour) return null;
+                          const height = Math.max(36, durationHours * 48); // Minimum height of 36px
                           
                           return (
                             <div
                               key={`session-${session.id}-${sessionIndex}`}
                               className={cn(
-                                "absolute left-1 right-1 rounded-md p-1 overflow-hidden text-xs z-10 border shadow-sm",
+                                "absolute left-1 right-1 rounded-md p-1 overflow-hidden text-xs border shadow-sm",
                                 session.isAiGenerated 
-                                  ? "bg-purple-100 border-purple-300"
-                                  : "bg-indigo-100 border-indigo-300"
+                                  ? "bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 dark:from-purple-900/20 dark:to-purple-800/30 dark:border-purple-800/50"
+                                  : "bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 dark:from-indigo-900/20 dark:to-indigo-800/30 dark:border-indigo-800/50"
                               )}
                               style={{
                                 top: `${topOffset}px`,
@@ -223,7 +235,7 @@ export default function WeeklyScheduleView({ sessions, onCreateSession }: Weekly
                               }}
                             >
                               <div className="font-medium truncate">{session.title}</div>
-                              <div className="truncate text-xs">{session.startTime} - {session.endTime}</div>
+                              <div className="truncate text-xs opacity-80">{session.startTime} - {session.endTime}</div>
                             </div>
                           );
                         })}

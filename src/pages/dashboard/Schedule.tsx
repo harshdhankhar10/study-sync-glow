@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
@@ -140,6 +141,7 @@ export default function Schedule() {
           <Button 
             variant="outline" 
             onClick={() => setShowCalendarSync(true)}
+            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             Sync Calendar
@@ -147,6 +149,7 @@ export default function Schedule() {
           <Button 
             variant="outline"
             onClick={() => setShowCreateSession(true)}
+            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
           >
             <Plus className="mr-2 h-4 w-4" />
             Create Session
@@ -154,18 +157,25 @@ export default function Schedule() {
           <Button 
             onClick={handleGenerateStudyPlan}
             disabled={isGeneratingPlan || !hasAvailability}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-sm hover:shadow transition-all"
           >
+            <BookText className="mr-2 h-4 w-4" />
             {isGeneratingPlan ? "Generating..." : "Generate AI Study Plan"}
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="weekly" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="weekly">Weekly View</TabsTrigger>
-          <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-          <TabsTrigger value="study-plans">AI Study Plans</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 bg-gray-100/80 dark:bg-gray-900/50 p-1 rounded-lg">
+          <TabsTrigger value="weekly" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+            Weekly View
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+            Calendar View
+          </TabsTrigger>
+          <TabsTrigger value="study-plans" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+            AI Study Plans
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="weekly" className="mt-4">
@@ -174,10 +184,10 @@ export default function Schedule() {
 
         <TabsContent value="calendar" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Calendar</CardTitle>
-                <CardDescription>
+            <Card className="md:col-span-2 border border-gray-200 shadow-sm">
+              <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20">
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Calendar</CardTitle>
+                <CardDescription className="text-gray-600 dark:text-gray-400">
                   View and manage your study sessions
                 </CardDescription>
               </CardHeader>
@@ -192,7 +202,7 @@ export default function Schedule() {
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2">
-                    <h3 className="font-medium mb-2">
+                    <h3 className="font-medium mb-2 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                       {selectedDate ? selectedDate.toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         month: 'long', 
@@ -202,24 +212,29 @@ export default function Schedule() {
                     {sessionsForSelectedDate && sessionsForSelectedDate.length > 0 ? (
                       <div className="space-y-2">
                         {sessionsForSelectedDate.map(session => (
-                          <div key={session.id} className="p-2 border rounded-md">
-                            <div className="font-medium">{session.title}</div>
-                            <div className="text-sm text-gray-500">
-                              {session.startTime} - {session.endTime}
+                          <div key={session.id} className="p-3 border rounded-md border-gray-200 hover:border-indigo-200 hover:shadow-sm transition-all dark:border-gray-800 dark:hover:border-indigo-800/50">
+                            <div className="font-medium text-gray-800 dark:text-gray-200">{session.title}</div>
+                            <div className="flex items-center text-sm text-gray-500 gap-1 mt-1">
+                              <Clock className="h-3.5 w-3.5 text-indigo-500" />
+                              <span>{session.startTime} - {session.endTime}</span>
                             </div>
-                            <div className="text-xs mt-1 text-gray-400">
-                              {session.location} • {session.topic}
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs bg-gray-50">{session.location}</Badge>
+                              {session.isAiGenerated && (
+                                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">AI</Badge>
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center py-4 text-center space-y-2">
+                      <div className="flex flex-col items-center justify-center py-6 text-center space-y-3 bg-gray-50 dark:bg-gray-900/30 rounded-md">
+                        <CalendarIcon className="h-10 w-10 text-gray-400" />
                         <p className="text-sm text-gray-500">No sessions scheduled for this day</p>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="mt-2"
+                          className="mt-2 border-indigo-200 hover:border-indigo-300"
                           onClick={() => setShowCreateSession(true)}
                         >
                           <Plus className="mr-2 h-3 w-3" />
@@ -232,10 +247,10 @@ export default function Schedule() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Sessions</CardTitle>
-                <CardDescription>Your next 7 days study sessions</CardDescription>
+            <Card className="border border-gray-200 shadow-sm">
+              <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20">
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Upcoming Sessions</CardTitle>
+                <CardDescription className="text-gray-600 dark:text-gray-400">Your next 7 days study sessions</CardDescription>
               </CardHeader>
               <CardContent>
                 {upcomingSessions && upcomingSessions.length > 0 ? (
@@ -245,10 +260,10 @@ export default function Schedule() {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+                  <div className="flex flex-col items-center justify-center py-8 text-center space-y-4 bg-gray-50 dark:bg-gray-900/30 rounded-md">
                     <Clock className="h-10 w-10 text-gray-400" />
                     <div>
-                      <h3 className="font-medium">No upcoming sessions</h3>
+                      <h3 className="font-medium text-gray-700 dark:text-gray-300">No upcoming sessions</h3>
                       <p className="text-gray-500 text-sm mt-1">
                         Generate a study plan or create sessions manually
                       </p>
@@ -256,7 +271,7 @@ export default function Schedule() {
                     <div className="space-x-2">
                       <Button
                         variant="outline"
-                        className="mt-2"
+                        className="mt-2 border-indigo-200 hover:border-indigo-300"
                         onClick={() => setShowCreateSession(true)}
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -278,27 +293,24 @@ export default function Schedule() {
         </TabsContent>
 
         <TabsContent value="study-plans" className="mt-4">
-          <Card>
-            <CardHeader>
+          <Card className="border border-gray-200 shadow-sm">
+            <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20">
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>AI Generated Study Plans</CardTitle>
-                  <CardDescription>
+                  <CardTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">AI Generated Study Plans</CardTitle>
+                  <CardDescription className="text-gray-600 dark:text-gray-400">
                     Your personalized study sessions created by AI
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={handleGenerateStudyPlan}
-                  disabled={isGeneratingPlan || !hasAvailability}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                >
-                  <BookText className="mr-2 h-4 w-4" />
-                  {isGeneratingPlan ? "Generating..." : "Generate New Plan"}
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <StudyPlanList sessions={studySessions || []} />
+              <StudyPlanList 
+                sessions={studySessions || []} 
+                onGeneratePlan={handleGenerateStudyPlan}
+                isGenerating={isGeneratingPlan}
+                hasAvailability={!!hasAvailability}
+              />
             </CardContent>
           </Card>
         </TabsContent>
