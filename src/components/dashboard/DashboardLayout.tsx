@@ -1,128 +1,191 @@
 
-import { ReactNode, useState, useEffect } from 'react';
-import Navbar from './Navbar';
-import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarHeader, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
-import { User, Calendar, BookOpen, Award, LogOut, Clock, NotebookPen, TrendingUp } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import React, { ReactNode, useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { 
+  SidebarProvider, 
+  Sidebar, 
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarRail,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarInset
+} from '@/components/ui/sidebar';
+import { 
+  LucideIcon, 
+  User, 
+  Calendar, 
+  Home, 
+  LogOut, 
+  Settings,
+  Target,
+  Clock,
+  Book,
+  BarChart3,
+  BookOpen,
+  Users
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import Navbar from './Navbar';
+
+interface SidebarLink {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+}
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { currentUser, logout } = useAuth();
   const { toast } = useToast();
-  const [activePage, setActivePage] = useState('profile');
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const path = location.pathname;
-    if (path.includes('/dashboard/profile')) {
-      setActivePage('profile');
-    } else if (path.includes('/dashboard/availability')) {
-      setActivePage('availability');
-    } else if (path.includes('/dashboard/goals')) {
-      setActivePage('goals');
-    } else if (path.includes('/dashboard/skills')) {
-      setActivePage('skills');
-    } else if (path.includes('/dashboard/schedule')) {
-      setActivePage('schedule');
-    } else if (path.includes('/dashboard/notes')) {
-      setActivePage('notes');
-    } else if (path.includes('/dashboard/progress')) {
-      setActivePage('progress');
-    } else if (path === '/dashboard') {
-      setActivePage('dashboard');
-    }
-  }, [location.pathname]);
-
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
-      await signOut(auth);
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out",
-      });
+      await logout();
       navigate('/login');
-    } catch (error: any) {
       toast({
-        variant: "destructive",
-        title: "Error signing out",
-        description: error.message,
+        title: "Logged out successfully",
+        description: "You have been logged out of your account.",
+      });
+    } catch (error) {
+      toast({
+        title: "Logout failed",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
-  const menuItems = [
-    { id: 'dashboard', title: 'Dashboard', icon: User, url: '/dashboard' },
-    { id: 'profile', title: 'Profile Setup', icon: User, url: '/dashboard/profile' },
-    { id: 'availability', title: 'Availability', icon: Calendar, url: '/dashboard/availability' },
-    { id: 'goals', title: 'Learning Goals', icon: BookOpen, url: '/dashboard/goals' },
-    { id: 'skills', title: 'Skills & Interests', icon: Award, url: '/dashboard/skills' },
-    { id: 'schedule', title: 'Study Schedule', icon: Clock, url: '/dashboard/schedule' },
-    { id: 'notes', title: 'Note Management', icon: NotebookPen, url: '/dashboard/notes' },
-    { id: 'progress', title: 'Progress Tracker', icon: TrendingUp, url: '/dashboard/progress' },
+  const mainLinks: SidebarLink[] = [
+    { title: 'Dashboard', href: '/dashboard', icon: Home },
+    { title: 'Schedule', href: '/dashboard/schedule', icon: Calendar },
+    { title: 'Availability', href: '/dashboard/availability', icon: Clock },
+    { title: 'Goals', href: '/dashboard/goals', icon: Target },
+    { title: 'Skills', href: '/dashboard/skills', icon: BookOpen },
+    { title: 'Notes', href: '/dashboard/notes', icon: Book },
+    { title: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
+    { title: 'Study Groups', href: '/dashboard/study-groups', icon: Users },
+  ];
+
+  const accountLinks: SidebarLink[] = [
+    { title: 'Profile', href: '/dashboard/profile', icon: User },
+    { title: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-gray-50">
+      <div className="min-h-screen flex w-full">
+        {/* Sidebar */}
         <Sidebar>
-          <SidebarHeader className="py-4">
-            <div className="flex items-center px-4">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                S
+          <SidebarHeader className="p-3">
+            <div className="flex gap-2 items-center">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center text-white">
+                <BookOpen className="h-4 w-4" />
               </div>
-              <h1 className="ml-2 text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                StudySync
-              </h1>
+              <div className="font-semibold text-lg">StudySync</div>
             </div>
           </SidebarHeader>
-          <SidebarSeparator />
+
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+              <SidebarGroupLabel>Main</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.id}>
-                      <SidebarMenuButton 
-                        isActive={activePage === item.id}
-                        onClick={() => {
-                          setActivePage(item.id);
-                          navigate(item.url);
-                        }}
-                        tooltip={item.title}
+                  {mainLinks.map((link) => (
+                    <SidebarMenuItem key={link.href}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={link.title}
+                        isActive={location.pathname === link.href || (link.href !== '/dashboard' && location.pathname.startsWith(link.href))}
                       >
-                        <item.icon className="h-5 w-5" />
-                        <span>{item.title}</span>
+                        <NavLink to={link.href}>
+                          <link.icon />
+                          <span>{link.title}</span>
+                        </NavLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Account</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {accountLinks.map((link) => (
+                    <SidebarMenuItem key={link.href}>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={link.title}
+                        isActive={location.pathname === link.href}
+                      >
+                        <NavLink to={link.href}>
+                          <link.icon />
+                          <span>{link.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      onClick={handleLogout}
+                      tooltip="Logout"
+                    >
+                      <LogOut />
+                      <span>Logout</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleSignOut} tooltip="Sign Out">
-                  <LogOut className="h-5 w-5" />
-                  <span>Sign Out</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
+
+          <SidebarFooter className="p-3">
+            <div className="flex items-center gap-3 px-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUser?.photoURL || undefined} />
+                <AvatarFallback>
+                  {currentUser?.displayName
+                    ? currentUser.displayName.substring(0, 2).toUpperCase()
+                    : currentUser?.email?.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-sm font-medium truncate">
+                  {currentUser?.displayName || currentUser?.email || 'User'}
+                </p>
+                {currentUser?.displayName && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {currentUser.email}
+                  </p>
+                )}
+              </div>
+            </div>
           </SidebarFooter>
+
+          <SidebarRail />
         </Sidebar>
-        <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Main Content */}
+        <SidebarInset>
           <Navbar />
-          <main className="flex-1 overflow-y-auto p-6">
-            {children}
-          </main>
-        </div>
+          <div className="flex-1 container py-6">{children}</div>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );

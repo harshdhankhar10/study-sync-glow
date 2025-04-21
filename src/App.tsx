@@ -18,6 +18,7 @@ import Skills from "./pages/dashboard/Skills";
 import Schedule from "./pages/dashboard/Schedule";
 import Notes from "./pages/dashboard/Notes";
 import Progress from "./pages/dashboard/Progress";
+import StudyGroups from "./pages/dashboard/StudyGroups";
 
 function App() {
   const queryClient = new QueryClient();
@@ -50,6 +51,8 @@ function App() {
               <Route path="schedule" element={<Schedule />} />
               <Route path="notes" element={<Notes />} />
               <Route path="progress" element={<Progress />} />
+              <Route path="study-groups" element={<StudyGroups />} />
+              <Route path="study-groups/:groupId" element={<StudyGroups />} />
             </Route>
             
             <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
