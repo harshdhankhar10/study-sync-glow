@@ -40,7 +40,6 @@ const mainNavItems: SidebarSectionType = {
       title: "Schedule",
       href: "/dashboard/schedule",
       icon: CalendarRange,
-      badge: "New",
     },
     {
       title: "Notes",
@@ -120,8 +119,8 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   };
 
   const SidebarContent = () => (
-    <div className="flex h-full flex-col gap-6">
-      <div className="flex flex-col gap-2">
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex flex-col gap-1 px-2">
         <SidebarSection
           section={mainNavItems}
           currentPath={location.pathname}
@@ -129,7 +128,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1 px-2">
         <SidebarSection
           section={toolsNavItems}
           currentPath={location.pathname}
@@ -137,9 +136,9 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         />
       </div>
 
-      <Separator className="my-2" />
+      <Separator className="opacity-50" />
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1 px-2">
         <SidebarSection
           section={settingsNavItems}
           currentPath={location.pathname}
@@ -148,12 +147,12 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       </div>
 
       <div className="mt-auto">
-        <Separator className="my-4" />
-        <div className="px-3 py-2">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar className="h-10 w-10 border-2 border-indigo-100">
+        <Separator className="opacity-50 my-2" />
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3 mb-3">
+            <Avatar className="h-9 w-9 border-2 border-indigo-100">
               <AvatarImage src={currentUser?.photoURL || ""} />
-              <AvatarFallback className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+              <AvatarFallback className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm">
                 {currentUser?.displayName?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
@@ -168,11 +167,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
           <Button
             variant="outline"
-            className="w-full justify-start text-gray-600 hover:text-gray-900 hover:bg-gray-100/50"
+            className="w-full justify-start text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 border-gray-200"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            Sign out
           </Button>
         </div>
       </div>
@@ -180,7 +179,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   );
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50/50 to-white">
       <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <SheetTrigger asChild>
           <Button
@@ -191,7 +190,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
             <Menu className="w-5 h-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-6">
+        <SheetContent side="left" className="w-72 p-6 bg-white/95 backdrop-blur-sm">
           <SheetHeader className="text-left mb-6">
             <SheetTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               StudySync
@@ -205,8 +204,8 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       </Sheet>
 
       <div className="flex">
-        <aside className="hidden md:flex flex-col w-72 shrink-0 h-screen sticky top-0 border-r border-gray-200 bg-white overflow-y-auto p-6">
-          <div className="mb-6">
+        <aside className="hidden md:flex flex-col w-72 shrink-0 h-screen sticky top-0 border-r border-gray-100 bg-white/95 backdrop-blur-sm overflow-y-auto py-6">
+          <div className="mb-6 px-6">
             <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               StudySync
             </h1>
