@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const location = useLocation();
   const { toast } = useToast();
@@ -44,4 +44,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Render children if authenticated
   return <>{children}</>;
-}
+};
+
+export default ProtectedRoute;
