@@ -13,7 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface AchievementProps {
   id?: string;
@@ -223,8 +223,8 @@ export default function Achievements() {
               progress: item.progress,
               unlocked: item.unlocked,
               category: item.category,
-              date: item.date,
-              reward: item.reward,
+              date: item.date || null, // Ensure date is never undefined
+              reward: item.reward || null, // Ensure reward is never undefined
               createdAt: date,
             });
           });
@@ -251,16 +251,20 @@ export default function Achievements() {
     
     try {
       const achievementsRef = collection(db, 'achievements');
+      
+      // Calculate if achievement is unlocked based on progress
+      const isUnlocked = parseInt(newAchievement.progress.toString()) === 100;
+      
       await addDoc(achievementsRef, {
         userId: user.uid,
         title: newAchievement.title,
         description: newAchievement.description,
         icon: newAchievement.icon,
         progress: parseInt(newAchievement.progress.toString()),
-        unlocked: parseInt(newAchievement.progress.toString()) === 100,
+        unlocked: isUnlocked,
         category: newAchievement.category,
-        date: parseInt(newAchievement.progress.toString()) === 100 ? "Just now" : undefined,
-        reward: parseInt(newAchievement.progress.toString()) === 100 ? newAchievement.reward : undefined,
+        date: isUnlocked ? "Just now" : null, // Provide null instead of undefined
+        reward: isUnlocked && newAchievement.reward ? newAchievement.reward : null, // Provide null instead of undefined
         createdAt: serverTimestamp(),
       });
       
@@ -420,41 +424,43 @@ export default function Achievements() {
         </Card>
       </div>
 
-      {/* Add Achievement Sheet */}
-      <Sheet open={isAddAchievementOpen} onOpenChange={setIsAddAchievementOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Add New Achievement</SheetTitle>
-            <SheetDescription>
-              Create a custom achievement to track your learning goals.
-            </SheetDescription>
-          </SheetHeader>
+      {/* Add Achievement Dialog - Improved UI, centered on page */}
+      <Dialog open={isAddAchievementOpen} onOpenChange={setIsAddAchievementOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Create New Achievement</DialogTitle>
+            <DialogDescription>
+              Track your progress towards your learning goals
+            </DialogDescription>
+          </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Achievement Title</Label>
+              <Label htmlFor="title" className="font-medium">Achievement Title</Label>
               <Input 
                 id="title" 
                 value={newAchievement.title} 
                 onChange={(e) => setNewAchievement({...newAchievement, title: e.target.value})}
                 placeholder="Enter achievement title" 
+                className="border-indigo-100 focus-visible:ring-indigo-500"
               />
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="font-medium">Description</Label>
               <Textarea 
                 id="description" 
                 value={newAchievement.description} 
                 onChange={(e) => setNewAchievement({...newAchievement, description: e.target.value})}
                 placeholder="What needs to be accomplished?" 
+                className="border-indigo-100 focus-visible:ring-indigo-500"
               />
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category" className="font-medium">Category</Label>
               <select 
                 id="category"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-indigo-100 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 value={newAchievement.category}
                 onChange={(e) => setNewAchievement({...newAchievement, category: e.target.value})}
               >
@@ -466,21 +472,28 @@ export default function Achievements() {
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="icon">Icon</Label>
-              <select 
-                id="icon"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={newAchievement.icon}
-                onChange={(e) => setNewAchievement({...newAchievement, icon: e.target.value})}
-              >
+              <Label htmlFor="icon" className="font-medium">Icon</Label>
+              <div className="grid grid-cols-4 gap-2 mb-2">
                 {iconOptions.map(icon => (
-                  <option key={icon.name} value={icon.name}>{icon.name}</option>
+                  <div
+                    key={icon.name}
+                    onClick={() => setNewAchievement({...newAchievement, icon: icon.name})}
+                    className={`flex flex-col items-center justify-center p-2 rounded-md cursor-pointer transition-colors border ${newAchievement.icon === icon.name ? 'bg-indigo-50 border-indigo-200' : 'border-gray-200 hover:bg-gray-50'}`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 mb-1">
+                      {icon.component}
+                    </div>
+                    <span className="text-xs">{icon.name}</span>
+                  </div>
                 ))}
-              </select>
+              </div>
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="progress">Current Progress ({newAchievement.progress}%)</Label>
+              <div className="flex justify-between items-center">
+                <Label htmlFor="progress" className="font-medium">Current Progress</Label>
+                <span className="text-sm font-medium text-indigo-600">{newAchievement.progress}%</span>
+              </div>
               <Input 
                 id="progress" 
                 type="range" 
@@ -488,30 +501,41 @@ export default function Achievements() {
                 max="100" 
                 value={newAchievement.progress} 
                 onChange={(e) => setNewAchievement({...newAchievement, progress: parseInt(e.target.value)})}
-                className="w-full" 
+                className="accent-indigo-600 w-full" 
               />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Not Started</span>
+                <span>In Progress</span>
+                <span>Completed</span>
+              </div>
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="reward">Reward (when completed)</Label>
+              <Label htmlFor="reward" className="font-medium">Reward (when completed)</Label>
               <Input 
                 id="reward" 
                 value={newAchievement.reward} 
                 onChange={(e) => setNewAchievement({...newAchievement, reward: e.target.value})}
                 placeholder="e.g. Gold Scholar Badge" 
+                className="border-indigo-100 focus-visible:ring-indigo-500"
               />
             </div>
           </div>
-          <div className="flex flex-col gap-2 mt-4">
-            <Button onClick={handleAddAchievement} className="bg-gradient-to-r from-indigo-600 to-purple-600">
-              Add Achievement
-            </Button>
-            <Button variant="outline" onClick={() => setIsAddAchievementOpen(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsAddAchievementOpen(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+            <Button 
+              onClick={handleAddAchievement} 
+              className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              disabled={!newAchievement.title || !newAchievement.description}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Achievement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {achievementsLoading ? (

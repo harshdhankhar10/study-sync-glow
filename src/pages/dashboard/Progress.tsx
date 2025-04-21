@@ -1,15 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Button } from '@/components/ui/button';
+import { TrendingUp, Users, Award } from 'lucide-react';
+import { getFirestore } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Award, BookOpen, TrendingUp, Users } from 'lucide-react';
-import { getFirestore, collection, query, where, getDocs, doc, getDoc, setDoc, addDoc } from 'firebase/firestore';
-import { auth } from '@/lib/firebase';
-import { useQuery } from '@tanstack/react-query';
 import PersonalProgress from '@/components/progress/PersonalProgress';
 import GroupProgress from '@/components/progress/GroupProgress';
 import Achievements from '@/components/progress/Achievements';
