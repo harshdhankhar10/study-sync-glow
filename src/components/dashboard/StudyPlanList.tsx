@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StudySession } from '@/pages/dashboard/Schedule';
-import { FlashCard, BookText } from 'lucide-react';
+import { FileText, BookText } from 'lucide-react';
 
 interface StudyPlanListProps {
   sessions: StudySession[];
@@ -54,7 +54,7 @@ export default function StudyPlanList({ sessions }: StudyPlanListProps) {
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <FlashCard className="h-4 w-4 text-indigo-600" />
+                <FileText className="h-4 w-4 text-indigo-600" />
                 <span className="font-medium">Topic:</span> {session.topic}
               </div>
               <div className="text-sm text-gray-600">
