@@ -1,3 +1,4 @@
+
 import HelpCenter from "./pages/dashboard/HelpCenter";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
@@ -21,6 +22,7 @@ import StudyBuddy from "./pages/dashboard/StudyBuddy";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MotivationCenter from "./pages/dashboard/MotivationCenter";
+import SkillMatchGrid from "./pages/dashboard/SkillMatchGrid";
 
 const App = () => {
   return (
@@ -45,6 +47,7 @@ const App = () => {
         <Route path="/dashboard/streaks" element={<ProtectedRoute><DashboardLayout><Streaks /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/study-buddy" element={<ProtectedRoute><DashboardLayout><StudyBuddy /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/motivation" element={<ProtectedRoute><DashboardLayout><MotivationCenter /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/skillmatch-grid" element={<ProtectedRoute><DashboardLayout><SkillMatchGrid /></DashboardLayout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

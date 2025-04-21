@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -9,7 +8,7 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, Globe } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -78,6 +77,13 @@ const toolsNavItems: SidebarSectionType = {
       title: "Study Buddy",
       href: "/dashboard/study-buddy",
       icon: Book,
+    },
+    {
+      title: "SkillMatch Grid",
+      href: "/dashboard/skillmatch-grid",
+      icon: Globe,
+      isGlobal: true,
+      badge: "New",
     },
   ],
 };

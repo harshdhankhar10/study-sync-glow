@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { SidebarItem as SidebarItemType } from "@/types/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { Globe } from "lucide-react";
 
 interface SidebarItemProps {
   item: SidebarItemType;
@@ -33,6 +34,9 @@ export function SidebarItem({ item, isActive, onClick }: SidebarItemProps) {
         isActive ? "text-indigo-600" : "text-gray-500 group-hover:text-indigo-600"
       )} />
       <span className="flex-1 truncate">{item.title}</span>
+      {item.isGlobal && (
+        <Globe className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
+      )}
       {item.badge && (
         <Badge variant="secondary" className="bg-indigo-100 text-indigo-600 hover:bg-indigo-100">
           {item.badge}
