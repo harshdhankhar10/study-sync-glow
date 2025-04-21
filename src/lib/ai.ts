@@ -1,3 +1,4 @@
+
 import { getFirestore, collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -237,5 +238,143 @@ export async function generateNoteSummary(noteContent: string, title: string): P
   } catch (error: any) {
     console.error("Error generating note summary:", error);
     throw new Error(`Failed to generate summary: ${error.message}`);
+  }
+}
+
+interface GroupMatch {
+  groupId: string;
+  groupName: string;
+  matchScore: number;
+  reasonsForMatch: string[];
+}
+
+export async function generateGroupMatches(
+  userId: string,
+  skillsData: any,
+  goalsData: any,
+  profileData: any
+): Promise<GroupMatch[]> {
+  try {
+    // Get all public study groups
+    const groupsRef = collection(db, 'studyGroups');
+    const groupsQuery = query(groupsRef, where('isPublic', '==', true));
+    const groupsSnapshot = await getDocs(groupsQuery);
+    
+    const groups = groupsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    // Skip if no groups found
+    if (groups.length === 0) {
+      return [];
+    }
+    
+    // Get existing memberships to filter out groups user is already in
+    const membershipsRef = collection(db, 'groupMemberships');
+    const membershipQuery = query(
+      membershipsRef,
+      where('userId', '==', userId)
+    );
+    const membershipDocs = await getDocs(membershipQuery);
+    const userGroupIds = membershipDocs.docs.map(doc => doc.data().groupId);
+    
+    // Filter out groups user already belongs to
+    const availableGroups = groups.filter(group => !userGroupIds.includes(group.id));
+    
+    if (availableGroups.length === 0) {
+      return [];
+    }
+    
+    // Prepare user data for AI matching
+    const userData = {
+      skills: skillsData?.skills || [],
+      interests: skillsData?.interests || [],
+      subjects: skillsData?.subjects || [],
+      goals: goalsData?.goals || [],
+      major: profileData?.major || '',
+      school: profileData?.school || '',
+      year: profileData?.year || ''
+    };
+    
+    // Make API call to Gemini for group matching
+    const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Match a student with suitable study groups based on the following data:
+                
+                Student Information:
+                - Skills: ${JSON.stringify(userData.skills)}
+                - Interests: ${JSON.stringify(userData.interests)}
+                - Subjects: ${JSON.stringify(userData.subjects)}
+                - Learning Goals: ${JSON.stringify(userData.goals)}
+                - Major: ${userData.major}
+                - School: ${userData.school}
+                - Year: ${userData.year}
+                
+                Available Study Groups:
+                ${availableGroups.map(group => `
+                Group ID: ${group.id}
+                Group Name: ${group.name}
+                Subject: ${group.subject || 'Not specified'}
+                Purpose: ${group.purpose || 'General study'}
+                Description: ${group.description || 'No description'}
+                `).join("\n")}
+                
+                For each group, calculate a match score (0.0 to 1.0) based on compatibility with the student's profile.
+                Provide 2-3 specific reasons why each group would be a good match.
+                Only include groups with a match score of 0.5 or higher.
+                Limit to top 5 matches.
+                
+                Return ONLY a valid JSON array in this format:
+                [
+                  {
+                    "groupId": "string",
+                    "groupName": "string",
+                    "matchScore": number,
+                    "reasonsForMatch": ["string", "string"]
+                  }
+                ]
+                `
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Extract the JSON from the text response
+    let jsonText = data.candidates[0].content.parts[0].text;
+    
+    // Find JSON content (between square brackets)
+    const jsonMatch = jsonText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error("Could not parse AI response");
+    }
+    
+    const matchedGroups = JSON.parse(jsonMatch[0]);
+    
+    return matchedGroups;
+    
+  } catch (error: any) {
+    console.error("Error generating group matches:", error);
+    throw new Error(`Failed to generate group matches: ${error.message}`);
   }
 }
