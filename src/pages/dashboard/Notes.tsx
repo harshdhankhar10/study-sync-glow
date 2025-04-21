@@ -1,8 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Plus, FileText, Trash2, Upload, ArrowRight, Brain } from "lucide-react";
+import { Plus, FileText, Trash2, Upload, ArrowRight, Brain, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -193,6 +192,29 @@ const Notes = () => {
 
   // Get all unique tags from notes
   const allTags = Array.from(new Set(notes.flatMap(note => note.tags))).sort();
+
+  // Function to open summary in new tab
+  const openSummaryInNewTab = (summary: string, title: string) => {
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(`
+        <html>
+          <head>
+            <title>Summary: ${title}</title>
+            <style>
+              body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; }
+              h1 { color: #6E59A5; }
+              .content { white-space: pre-wrap; line-height: 1.6; }
+            </style>
+          </head>
+          <body>
+            <h1>AI Summary: ${title}</h1>
+            <div class="content">${summary}</div>
+          </body>
+        </html>
+      `);
+    }
+  };
 
   return (
     <div className="container mx-auto py-6 max-w-7xl">
@@ -425,9 +447,19 @@ const Notes = () => {
                           
                           {activeNote.summary && (
                             <div className="mt-6">
-                              <h3 className="text-lg font-semibold flex items-center gap-1 mb-2">
-                                <Brain size={18} /> AI Summary
-                              </h3>
+                              <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-lg font-semibold flex items-center gap-1">
+                                  <Brain size={18} /> AI Summary
+                                </h3>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openSummaryInNewTab(activeNote.summary!, activeNote.title)}
+                                >
+                                  <ExternalLink size={16} className="mr-1" />
+                                  Open in New Tab
+                                </Button>
+                              </div>
                               <Separator className="my-2" />
                               <div className="bg-accent/50 p-4 rounded-md whitespace-pre-wrap">
                                 {activeNote.summary}
@@ -461,7 +493,68 @@ const Notes = () => {
                           Create New Note
                         </Button>
                       </DialogTrigger>
-                      {/* Dialog content is the same as the one above */}
+                      <DialogContent className="sm:max-w-[625px]">
+                        <DialogHeader>
+                          <DialogTitle>Create New Note</DialogTitle>
+                          <DialogDescription>
+                            Create a new note or upload a file to take advantage of AI-powered summarization.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="title">Title</Label>
+                            <Input
+                              id="title"
+                              placeholder="Note title"
+                              value={newNoteTitle}
+                              onChange={(e) => setNewNoteTitle(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="content">Content</Label>
+                            <Textarea
+                              id="content"
+                              placeholder="Write your note here..."
+                              className="min-h-[200px]"
+                              value={newNoteContent}
+                              onChange={(e) => setNewNoteContent(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="tags">Tags (comma separated)</Label>
+                            <Input
+                              id="tags"
+                              placeholder="study, math, lecture"
+                              value={newNoteTags}
+                              onChange={(e) => setNewNoteTags(e.target.value)}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="file">Attach File (Max 5MB)</Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                id="file"
+                                type="file"
+                                onChange={handleFileSelect}
+                                accept=".pdf,.doc,.docx,.txt,.md,.ppt,.pptx"
+                              />
+                            </div>
+                            {selectedFile && (
+                              <p className="text-sm text-muted-foreground">
+                                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            onClick={handleCreateNote} 
+                            disabled={isCreating || !newNoteTitle.trim()}
+                          >
+                            {isCreating ? "Creating..." : "Create Note"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
                     </Dialog>
                   </div>
                 )}
@@ -472,6 +565,7 @@ const Notes = () => {
         
         <TabsContent value="ai-tools" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Upload & Summarize Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Upload & Summarize</CardTitle>
@@ -563,6 +657,26 @@ const Notes = () => {
                           {selectedFile?.name} ({selectedFile ? (selectedFile.size / 1024 / 1024).toFixed(2) : 0} MB)
                         </AlertDescription>
                       </Alert>
+                      {activeNote?.summary && (
+                        <div className="mt-4">
+                          <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                            <Brain size={18} />
+                            Generated Summary
+                          </h3>
+                          <div className="bg-accent/50 p-4 rounded-md">
+                            <div className="whitespace-pre-wrap">{activeNote.summary}</div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2"
+                              onClick={() => openSummaryInNewTab(activeNote.summary!, activeNote.title)}
+                            >
+                              <ExternalLink size={16} className="mr-1" />
+                              Open in New Tab
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <DialogFooter>
                       <Button 
@@ -577,6 +691,7 @@ const Notes = () => {
               </CardFooter>
             </Card>
 
+            {/* AI Summary Generator Card */}
             <Card>
               <CardHeader>
                 <CardTitle>AI Summary Generator</CardTitle>
@@ -654,6 +769,7 @@ const Notes = () => {
             </Card>
           </div>
 
+          {/* How It Works Card */}
           <Card>
             <CardHeader>
               <CardTitle>How It Works</CardTitle>
