@@ -1,7 +1,6 @@
-
 import { getFirestore, collection, addDoc, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-const db = getFirestore();
 const GEMINI_API_KEY = "AIzaSyDSRbZYHWLdncHiadycyFvKyyuMu_BPIv8";
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
@@ -192,5 +191,51 @@ export async function generateStudyPlan(userId: string, availabilitySlots: TimeS
   } catch (error: any) {
     console.error("Error generating study plan:", error);
     throw new Error(`Failed to generate study plan: ${error.message}`);
+  }
+}
+
+export async function generateNoteSummary(noteContent: string, title: string): Promise<string> {
+  try {
+    // Make API call to Gemini
+    const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: `Summarize the following note titled "${title}" into key points and main ideas:
+                
+                ${noteContent}
+                
+                Format the summary as a concise list of the most important points. 
+                Focus on clarity and preserving the most essential information.
+                The summary should be no longer than 30% of the original text.`
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const summaryText = data.candidates[0].content.parts[0].text;
+    
+    return summaryText;
+    
+  } catch (error: any) {
+    console.error("Error generating note summary:", error);
+    throw new Error(`Failed to generate summary: ${error.message}`);
   }
 }
