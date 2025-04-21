@@ -248,6 +248,16 @@ interface GroupMatch {
   reasonsForMatch: string[];
 }
 
+interface StudyGroupData {
+  id: string;
+  name: string;
+  subject?: string;
+  purpose?: string;
+  description?: string;
+  isPublic: boolean;
+  [key: string]: any; // Allow for any additional properties
+}
+
 export async function generateGroupMatches(
   userId: string,
   skillsData: any,
@@ -260,10 +270,10 @@ export async function generateGroupMatches(
     const groupsQuery = query(groupsRef, where('isPublic', '==', true));
     const groupsSnapshot = await getDocs(groupsQuery);
     
-    const groups = groupsSnapshot.docs.map(doc => ({
+    const groups: StudyGroupData[] = groupsSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    } as StudyGroupData));
     
     // Skip if no groups found
     if (groups.length === 0) {
@@ -322,7 +332,7 @@ export async function generateGroupMatches(
                 Available Study Groups:
                 ${availableGroups.map(group => `
                 Group ID: ${group.id}
-                Group Name: ${group.name}
+                Group Name: ${group.name || 'Unnamed Group'}
                 Subject: ${group.subject || 'Not specified'}
                 Purpose: ${group.purpose || 'General study'}
                 Description: ${group.description || 'No description'}
