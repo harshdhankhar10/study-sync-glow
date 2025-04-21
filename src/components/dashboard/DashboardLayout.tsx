@@ -1,3 +1,4 @@
+
 import React, { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -30,7 +31,8 @@ import {
   BookOpen,
   Users,
   Lightbulb,
-  HelpCircle
+  HelpCircle,
+  Flame
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -77,6 +79,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { title: 'Skills', href: '/dashboard/skills', icon: BookOpen },
     { title: 'Notes', href: '/dashboard/notes', icon: Book },
     { title: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
+    { title: 'Study Streaks', href: '/dashboard/streaks', icon: Flame },
     { title: 'Study Groups', href: '/dashboard/study-groups', icon: Users },
     { title: 'AI Insights', href: '/dashboard/ai-insights', icon: Lightbulb },
     { title: 'Help Center', href: '/dashboard/help', icon: HelpCircle },

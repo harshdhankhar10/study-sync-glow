@@ -21,6 +21,7 @@ import StudyMetrics from '@/components/dashboard/overview/StudyMetrics';
 import RecentActivity, { ActivityItem } from '@/components/dashboard/overview/RecentActivity';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import StreakDisplay from '@/components/dashboard/streaks/StreakDisplay';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -31,14 +32,12 @@ export default function Dashboard() {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
-        // Redirect to login if not authenticated
         navigate('/login');
       }
     });
     return () => unsubscribe();
   }, [navigate]);
 
-  // Fetch study metrics
   const { data: metricsData, isLoading: metricsLoading } = useQuery({
     queryKey: ['studyMetrics', user?.uid],
     queryFn: async () => {
@@ -54,7 +53,6 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch study groups with a more comprehensive approach
   const { data: groupsData, isLoading: groupsLoading } = useQuery({
     queryKey: ['studyGroups', user?.uid],
     queryFn: async () => {
@@ -108,7 +106,6 @@ export default function Dashboard() {
           }
         }
         
-        // Log successful group retrieval
         console.log(`Found ${groupCount} groups for user`, user.uid);
         
         return {
@@ -128,7 +125,6 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch recent activity with error handling
   const { data: recentActivity, isLoading: activityLoading } = useQuery({
     queryKey: ['recentActivity', user?.uid],
     queryFn: async () => {
@@ -158,7 +154,6 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch user profile data
   const { data: profileData } = useQuery({
     queryKey: ['profile', user?.uid],
     queryFn: async () => {
@@ -170,7 +165,6 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch upcoming study sessions
   const { data: upcomingSessions } = useQuery({
     queryKey: ['upcomingSessions', user?.uid],
     queryFn: async () => {
@@ -189,7 +183,6 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch goals progress
   const { data: goalsData } = useQuery({
     queryKey: ['goals', user?.uid],
     queryFn: async () => {
@@ -207,7 +200,6 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch recent notes
   const { data: recentNotes } = useQuery({
     queryKey: ['recentNotes', user?.uid],
     queryFn: async () => {
@@ -223,19 +215,16 @@ export default function Dashboard() {
         const snapshot = await getDocs(notesQuery);
         return snapshot.docs.map(doc => {
           const data = doc.data();
-          // Properly handle the updatedAt timestamp
           let formattedDate;
           if (data.updatedAt instanceof Timestamp) {
             formattedDate = data.updatedAt.toDate();
           } else if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
             formattedDate = data.updatedAt.toDate();
           } else if (data.updatedAt) {
-            // Try to parse as a date if it's a string or number
             formattedDate = new Date(data.updatedAt);
           } else {
-            formattedDate = new Date(); // Fallback to current date if no date available
+            formattedDate = new Date();
           }
-          
           return {
             id: doc.id,
             title: data.title || 'Untitled Note',
@@ -278,7 +267,6 @@ export default function Dashboard() {
 
   const progress = Math.round((setupTasks.filter(task => task.completed).length / setupTasks.length) * 100);
 
-  // If there's no activity data, provide some placeholder data
   const formattedActivity = recentActivity && recentActivity.length > 0 
     ? recentActivity as ActivityItem[]
     : [
@@ -302,7 +290,6 @@ export default function Dashboard() {
         }
       ];
 
-  // Loading state - prevent white screen
   if (!user && !auth.currentUser) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -314,17 +301,14 @@ export default function Dashboard() {
     );
   }
 
-  // Helper function to safely format dates
   const formatDate = (date: any): string => {
     try {
       if (!date) return 'Date not available';
       
-      // If it's a Firestore Timestamp
       if (date instanceof Timestamp || (date && typeof date.toDate === 'function')) {
         return format(date.toDate(), 'MMM d, yyyy');
       }
       
-      // If it's a Date object or valid date string/number
       return format(new Date(date), 'MMM d, yyyy');
     } catch (error) {
       console.error('Date formatting error:', error, date);
@@ -334,7 +318,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Section */}
       <div>
         <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
           Welcome back{profileData?.fullName ? `, ${profileData.fullName}` : ''}!
@@ -344,7 +327,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Study Metrics */}
       <StudyMetrics 
         studyTime={metricsData?.studyTime || 0}
         completedTasks={metricsData?.completedTasks || 0}
@@ -353,7 +335,6 @@ export default function Dashboard() {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Setup Progress Card */}
         <Card>
           <CardHeader>
             <CardTitle>Profile Setup</CardTitle>
@@ -393,15 +374,13 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 grid grid-cols-1 gap-6">
           <RecentActivity activities={formattedActivity} />
+          <StreakDisplay userId={user?.uid} />
         </div>
       </div>
 
-      {/* Additional Dashboard Sections - Recent Notes & Upcoming Sessions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Recent Notes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
@@ -448,7 +427,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Upcoming Sessions */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>

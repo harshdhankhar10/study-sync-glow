@@ -17,6 +17,7 @@ import AIInsights from "./pages/dashboard/AIInsights";
 import Profile from "./pages/dashboard/Profile";
 import Settings from "./pages/dashboard/Settings";
 import GroupMatch from "./pages/dashboard/GroupMatch";
+import Streaks from "./pages/dashboard/Streaks";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -40,6 +41,7 @@ const App = () => {
         <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/group-match" element={<ProtectedRoute><DashboardLayout><GroupMatch /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/help" element={<ProtectedRoute><DashboardLayout><HelpCenter /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/streaks" element={<ProtectedRoute><DashboardLayout><Streaks /></DashboardLayout></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
