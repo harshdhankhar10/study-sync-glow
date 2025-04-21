@@ -33,7 +33,8 @@ import {
   Lightbulb,
   HelpCircle,
   Flame,
-  Bot
+  Bot,
+  Star
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
