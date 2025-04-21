@@ -1,7 +1,8 @@
+
 import { ReactNode, useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarHeader, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
-import { User, Calendar, BookOpen, Award, LogOut, Clock, NotebookPen } from 'lucide-react';
+import { User, Calendar, BookOpen, Award, LogOut, Clock, NotebookPen, TrendingUp } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -29,6 +30,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       setActivePage('skills');
     } else if (path.includes('/dashboard/schedule')) {
       setActivePage('schedule');
+    } else if (path.includes('/dashboard/notes')) {
+      setActivePage('notes');
+    } else if (path.includes('/dashboard/progress')) {
+      setActivePage('progress');
     } else if (path === '/dashboard') {
       setActivePage('dashboard');
     }
@@ -59,6 +64,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { id: 'skills', title: 'Skills & Interests', icon: Award, url: '/dashboard/skills' },
     { id: 'schedule', title: 'Study Schedule', icon: Clock, url: '/dashboard/schedule' },
     { id: 'notes', title: 'Note Management', icon: NotebookPen, url: '/dashboard/notes' },
+    { id: 'progress', title: 'Progress Tracker', icon: TrendingUp, url: '/dashboard/progress' },
   ];
 
   return (

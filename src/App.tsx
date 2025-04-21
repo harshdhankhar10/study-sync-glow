@@ -17,6 +17,7 @@ import Goals from "./pages/dashboard/Goals";
 import Skills from "./pages/dashboard/Skills";
 import Schedule from "./pages/dashboard/Schedule";
 import Notes from "./pages/dashboard/Notes";
+import Progress from "./pages/dashboard/Progress";
 
 function App() {
   const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ function App() {
               <Route path="skills" element={<Skills />} />
               <Route path="schedule" element={<Schedule />} />
               <Route path="notes" element={<Notes />} />
+              <Route path="progress" element={<Progress />} />
             </Route>
             
             <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
