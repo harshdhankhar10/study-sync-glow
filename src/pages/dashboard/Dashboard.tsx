@@ -2,43 +2,91 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ChevronRight, Clock, UserPlus, CalendarIcon, TrendingUp } from 'lucide-react';
+import { ChevronRight, Clock, UserPlus, Calendar, TrendingUp, Users, BookOpen, Target } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 
 const db = getFirestore();
 
-interface ProfileData {
-  fullName?: string;
-  bio?: string;
-  school?: string;
-  major?: string;
-  year?: string;
-  email?: string;
-}
-
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
     });
-
     return () => unsubscribe();
   }, []);
 
+  // Fetch user profile data
   const { data: profileData } = useQuery({
     queryKey: ['profile', user?.uid],
     queryFn: async () => {
       if (!user?.uid) return null;
       const docRef = doc(db, 'profiles', user.uid);
       const docSnap = await getDoc(docRef);
-      return docSnap.exists() ? docSnap.data() as ProfileData : null;
+      return docSnap.exists() ? docSnap.data() : null;
+    },
+    enabled: !!user?.uid,
+  });
+
+  // Fetch upcoming study sessions
+  const { data: upcomingSessions } = useQuery({
+    queryKey: ['upcomingSessions', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return [];
+      const sessionsRef = collection(db, 'sessions');
+      const sessionsQuery = query(
+        sessionsRef,
+        where('userId', '==', user.uid),
+        where('date', '>=', new Date()),
+        orderBy('date', 'asc'),
+        limit(3)
+      );
+      const snapshot = await getDocs(sessionsQuery);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+    enabled: !!user?.uid,
+  });
+
+  // Fetch study groups count
+  const { data: groupsData } = useQuery({
+    queryKey: ['studyGroups', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return { count: 0, recent: [] };
+      const groupsRef = collection(db, 'groups');
+      const groupsQuery = query(
+        groupsRef,
+        where('members', 'array-contains', user.uid),
+        limit(3)
+      );
+      const snapshot = await getDocs(groupsQuery);
+      return {
+        count: snapshot.size,
+        recent: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      };
+    },
+    enabled: !!user?.uid,
+  });
+
+  // Fetch goals progress
+  const { data: goalsData } = useQuery({
+    queryKey: ['goals', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return [];
+      const goalsRef = collection(db, 'goals');
+      const goalsQuery = query(
+        goalsRef,
+        where('userId', '==', user.uid),
+        where('completed', '==', false),
+        limit(3)
+      );
+      const snapshot = await getDocs(goalsQuery);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     },
     enabled: !!user?.uid,
   });
@@ -52,127 +100,146 @@ export default function Dashboard() {
       completed: !!profileData?.fullName && !!profileData?.school 
     },
     { 
-      id: 'skills', 
-      title: 'Add skills & interests', 
-      description: "Tell us what you're good at and interested in learning", 
-      path: '/dashboard/skills',
-      completed: false 
-    },
-    { 
-      id: 'availability', 
-      title: 'Set your availability', 
-      description: 'Let us know when you can join study sessions', 
-      path: '/dashboard/availability',
-      completed: false 
-    },
-    { 
       id: 'goals', 
-      title: 'Define learning goals', 
-      description: 'Set clear objectives for your study journey', 
+      title: 'Set your learning goals', 
+      description: 'Define what you want to achieve', 
       path: '/dashboard/goals',
-      completed: false 
+      completed: !!goalsData?.length 
+    },
+    { 
+      id: 'groups', 
+      title: 'Join study groups', 
+      description: 'Connect with other learners', 
+      path: '/dashboard/study-groups',
+      completed: !!groupsData?.count 
     }
   ];
 
-  const progressPercentage = Math.round((setupTasks.filter(task => task.completed).length / setupTasks.length) * 100);
+  const progress = Math.round((setupTasks.filter(task => task.completed).length / setupTasks.length) * 100);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          Dashboard
+          Welcome back{profileData?.fullName ? `, ${profileData.fullName}` : ''}!
         </h2>
         <p className="text-gray-500 mt-1">
-          Welcome back{user?.displayName ? `, ${user.displayName}` : ''}! Track your progress and manage your study groups
+          Here's an overview of your learning journey
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2">
+        {/* Progress Overview */}
+        <Card>
           <CardHeader>
-            <CardTitle>Complete Your Profile</CardTitle>
-            <CardDescription>
-              Finish setting up your profile to get matched with study groups
-            </CardDescription>
+            <CardTitle>Profile Setup</CardTitle>
+            <CardDescription>Complete these steps to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
               <div className="flex justify-between mb-2">
-                <span className="text-sm font-medium">Profile completion</span>
-                <span className="text-sm font-medium">{progressPercentage}%</span>
+                <span className="text-sm font-medium">Setup Progress</span>
+                <span className="text-sm font-medium">{progress}%</span>
               </div>
-              <Progress value={progressPercentage} className="h-2" />
+              <Progress value={progress} className="h-2" />
             </div>
-
             <div className="space-y-4">
               {setupTasks.map((task) => (
-                <div key={task.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 transition-colors">
-                  {task.completed ? (
-                    <CheckCircle className="h-6 w-6 text-green-500 mt-0.5" />
-                  ) : (
-                    <Clock className="h-6 w-6 text-amber-500 mt-0.5" />
-                  )}
-                  <div className="flex-1">
-                    <h3 className="font-medium">{task.title}</h3>
-                    <p className="text-gray-500 text-sm">{task.description}</p>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => navigate(task.path)}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {progressPercentage >= 50 && (
-                <Button 
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                  onClick={() => navigate('/dashboard/schedule')}
+                <Button
+                  key={task.id}
+                  variant="ghost"
+                  className="w-full justify-start text-left h-auto py-2"
+                  onClick={() => navigate(task.path)}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  View My Study Schedule
+                  <div className="flex items-center gap-3">
+                    {task.completed ? (
+                      <div className="h-2 w-2 rounded-full bg-green-500" />
+                    ) : (
+                      <div className="h-2 w-2 rounded-full bg-gray-300" />
+                    )}
+                    <div className="flex-1">
+                      <p className="font-medium">{task.title}</p>
+                      <p className="text-sm text-gray-500">{task.description}</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                  </div>
                 </Button>
-              )}
-              <Button 
-                variant={progressPercentage >= 50 ? "outline" : "default"}
-                className={progressPercentage < 50 ? "w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700" : "w-full"}
-                onClick={() => navigate('/dashboard/progress')}
-              >
-                <TrendingUp className="mr-2 h-4 w-4" />
-                Track My Progress
-              </Button>
+              ))}
             </div>
           </CardContent>
         </Card>
 
+        {/* Upcoming Sessions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Upcoming Sessions</CardTitle>
+            <CardDescription>Your next study sessions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {upcomingSessions?.length ? (
+              <div className="space-y-4">
+                {upcomingSessions.map((session: any) => (
+                  <div key={session.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                    <Calendar className="h-5 w-5 text-indigo-500 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-medium">{session.title}</h3>
+                      <p className="text-gray-500 text-sm">
+                        {new Date(session.date.seconds * 1000).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <Clock className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">No upcoming sessions</p>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => navigate('/dashboard/schedule')}
+                >
+                  Schedule a Session
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Study Groups */}
         <Card>
           <CardHeader>
             <CardTitle>Study Groups</CardTitle>
-            <CardDescription>
-              Your current and upcoming study groups
-            </CardDescription>
+            <CardDescription>Your learning communities</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4 h-48">
-              <UserPlus className="h-10 w-10 text-gray-400" />
-              <div>
-                <h3 className="font-medium">No study groups yet</h3>
-                <p className="text-gray-500 text-sm mt-1">
-                  Complete your profile to get matched with groups
-                </p>
+            {groupsData?.count ? (
+              <div className="space-y-4">
+                {groupsData.recent.map((group: any) => (
+                  <div key={group.id} className="flex items-start gap-3 p-3 rounded-lg border">
+                    <Users className="h-5 w-5 text-indigo-500 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-medium">{group.name}</h3>
+                      <p className="text-gray-500 text-sm">
+                        {group.members?.length || 0} members
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <Button 
-                variant="outline"
-                className="mt-2"
-                onClick={() => navigate('/dashboard/profile')}
-              >
-                Complete Setup
-              </Button>
-            </div>
+            ) : (
+              <div className="text-center py-6">
+                <Users className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">No study groups joined yet</p>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => navigate('/dashboard/study-groups')}
+                >
+                  Find Groups
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
