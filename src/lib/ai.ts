@@ -76,8 +76,10 @@ export async function generateStudyPlan(userId: string, availabilitySlots: TimeS
     const existingSessions = querySnapshot.docs.map(doc => {
       const data = doc.data();
       return {
-        ...data,
+        title: data.title,
         date: data.date.toDate(),
+        startTime: data.startTime,
+        endTime: data.endTime
       };
     });
 
@@ -107,7 +109,7 @@ export async function generateStudyPlan(userId: string, availabilitySlots: TimeS
                 Skills/Interests: ${JSON.stringify(skills)}
                 Learning Goals: ${JSON.stringify(goals)}
                 Available Time Slots: ${JSON.stringify(selectedSlots.map(slot => `${slot.day} at ${slot.time}`))}
-                Existing Study Sessions: ${JSON.stringify(existingSessions.map(s => ({ title: s.title, date: s.date, time: `${s.startTime}-${s.endTime}` })))}
+                Existing Study Sessions: ${JSON.stringify(existingSessions)}
                 
                 Create 3-5 study sessions for the next two weeks. For each session, include:
                 1. Session title (brief but descriptive)

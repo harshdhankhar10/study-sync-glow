@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ChevronRight, Clock, UserPlus } from 'lucide-react';
+import { CheckCircle, ChevronRight, Clock, UserPlus, CalendarIcon } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
@@ -133,7 +133,7 @@ export default function Dashboard() {
                   className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                   onClick={() => navigate('/dashboard/schedule')}
                 >
-                  <Calendar className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="mr-2 h-4 w-4" />
                   View My Study Schedule
                 </Button>
               </div>
