@@ -7,6 +7,7 @@ export interface SidebarItem {
   icon: LucideIcon;
   badge?: string;
   isGlobal?: boolean;
+  isFeatured?: boolean;
 }
 
 export interface SidebarSection {

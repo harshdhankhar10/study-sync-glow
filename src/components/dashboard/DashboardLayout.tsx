@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -8,25 +9,13 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, Globe } from "lucide-react";
+import { Menu, Globe, Brain, Calendar, FileText, Star, Users, Settings, User, Book, LineChart, LogOut, Sparkles, Mail } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarSection } from "./sidebar/SidebarSection";
 import { SidebarItem, SidebarSection as SidebarSectionType } from "@/types/sidebar";
-import {
-  CalendarRange,
-  FileText,
-  Star,
-  Users,
-  Brain,
-  Settings,
-  User,
-  Book,
-  LineChart,
-  LogOut,
-} from 'lucide-react';
 
 const mainNavItems: SidebarSectionType = {
   title: "Navigation",
@@ -34,12 +23,12 @@ const mainNavItems: SidebarSectionType = {
     {
       title: "Dashboard",
       href: "/dashboard",
-      icon: CalendarRange,
+      icon: Calendar,
     },
     {
       title: "Schedule",
       href: "/dashboard/schedule",
-      icon: CalendarRange,
+      icon: Calendar,
     },
     {
       title: "Notes",
@@ -73,6 +62,13 @@ const toolsNavItems: SidebarSectionType = {
       icon: Brain,
     },
     {
+      title: "AI Learning Hub",
+      href: "/dashboard/ai-learning-hub",
+      icon: Brain,
+      badge: "New",
+      isFeatured: true,
+    },
+    {
       title: "Study Buddy",
       href: "/dashboard/study-buddy",
       icon: Book,
@@ -82,7 +78,6 @@ const toolsNavItems: SidebarSectionType = {
       href: "/dashboard/skillmatch-grid",
       icon: Globe,
       isGlobal: true,
-      badge: "New",
     },
   ],
 };

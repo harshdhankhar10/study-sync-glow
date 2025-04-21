@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MotivationCenter from "./pages/dashboard/MotivationCenter";
 import SkillMatchGrid from "./pages/dashboard/SkillMatchGrid";
+import AILearningHub from "./pages/dashboard/AILearningHub";
 
 const App = () => {
   return (
@@ -40,6 +41,7 @@ const App = () => {
         <Route path="/dashboard/progress" element={<ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/study-groups" element={<ProtectedRoute><DashboardLayout><StudyGroups /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/ai-insights" element={<ProtectedRoute><DashboardLayout><AIInsights /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/ai-learning-hub" element={<ProtectedRoute><DashboardLayout><AILearningHub /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardLayout><Profile /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/group-match" element={<ProtectedRoute><DashboardLayout><GroupMatch /></DashboardLayout></ProtectedRoute>} />
