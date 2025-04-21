@@ -41,7 +41,7 @@ export const StudyContext: React.FC<StudyContextProps> = ({ userData }) => {
     
     const date = timestamp instanceof Date 
       ? timestamp 
-      : timestamp.toDate?.();
+      : timestamp.toDate?.() || new Date(timestamp);
       
     return date ? format(date, 'MMM d, yyyy') : 'Invalid date';
   };
@@ -51,7 +51,7 @@ export const StudyContext: React.FC<StudyContextProps> = ({ userData }) => {
     
     const date = timestamp instanceof Date 
       ? timestamp 
-      : timestamp.toDate?.();
+      : timestamp.toDate?.() || new Date(timestamp);
       
     return date ? format(date, 'h:mm a') : '';
   };
@@ -139,8 +139,8 @@ export const StudyContext: React.FC<StudyContextProps> = ({ userData }) => {
           <CardContent>
             {userData.goals?.goals?.length > 0 ? (
               <ul className="space-y-2 pl-5 list-disc text-sm">
-                {userData.goals.goals.map((goal: string, i: number) => (
-                  <li key={i}>{goal}</li>
+                {userData.goals.goals.map((goal: any, i: number) => (
+                  <li key={i}>{typeof goal === 'string' ? goal : goal.title || 'Unnamed goal'}</li>
                 ))}
               </ul>
             ) : (

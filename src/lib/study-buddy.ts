@@ -35,7 +35,7 @@ export async function generateAIResponse(
       ${year !== 'Unknown' ? `- Year: ${year}` : ''}
       ${subjects.length > 0 ? `- Current subjects: ${subjects.join(', ')}` : ''}
       ${skills.length > 0 ? `- Skills: ${skills.join(', ')}` : ''}
-      ${goals.length > 0 ? `- Learning goals: ${goals.join(', ')}` : ''}
+      ${goals.length > 0 ? `- Learning goals: ${goals.map(g => typeof g === 'string' ? g : g.title).join(', ')}` : ''}
       ${recentNoteTitles.length > 0 ? `- Recent notes about: ${recentNoteTitles.join(', ')}` : ''}
       ${upcomingSessions.length > 0 ? `- Upcoming study sessions: ${upcomingSessions.join(', ')}` : ''}
       
@@ -67,8 +67,9 @@ export async function generateAIResponse(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        model: "gemini-1.5-flash",
         contents: messages.map(m => ({
-          role: m.role,
+          role: m.role === 'system' ? 'user' : m.role,
           parts: [{ text: m.content }]
         })),
         generationConfig: {
@@ -85,6 +86,12 @@ export async function generateAIResponse(
     }
 
     const data = await response.json();
+    
+    // Make sure we're accessing the response data correctly
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts) {
+      throw new Error("Invalid response format from API");
+    }
+    
     const aiResponseText = data.candidates[0].content.parts[0].text;
     
     return aiResponseText;
