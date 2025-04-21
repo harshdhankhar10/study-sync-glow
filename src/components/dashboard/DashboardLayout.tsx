@@ -32,7 +32,8 @@ import {
   Users,
   Lightbulb,
   HelpCircle,
-  Flame
+  Flame,
+  Bot
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -82,6 +83,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { title: 'Study Streaks', href: '/dashboard/streaks', icon: Flame },
     { title: 'Study Groups', href: '/dashboard/study-groups', icon: Users },
     { title: 'AI Insights', href: '/dashboard/ai-insights', icon: Lightbulb },
+    { title: 'StudyBuddy AI', href: '/dashboard/study-buddy', icon: Bot },
     { title: 'Help Center', href: '/dashboard/help', icon: HelpCircle },
   ];
 
