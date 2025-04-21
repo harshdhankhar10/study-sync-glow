@@ -20,7 +20,8 @@ import Notes from "./pages/dashboard/Notes";
 import Progress from "./pages/dashboard/Progress";
 import StudyGroups from "./pages/dashboard/StudyGroups";
 import GroupMatch from "./pages/dashboard/GroupMatch";
-import AIInsights from "./pages/dashboard/AIInsights"; // Import the new page
+import AIInsights from "./pages/dashboard/AIInsights";
+import Settings from "./pages/dashboard/Settings";  // Add this import
 
 function App() {
   const queryClient = new QueryClient();
@@ -56,7 +57,8 @@ function App() {
               <Route path="study-groups" element={<StudyGroups />} />
               <Route path="study-groups/:groupId" element={<StudyGroups />} />
               <Route path="group-match" element={<GroupMatch />} />
-              <Route path="ai-insights" element={<AIInsights />} /> {/* Add the new route */}
+              <Route path="ai-insights" element={<AIInsights />} />
+              <Route path="settings" element={<Settings />} /> {/* Add this route */}
             </Route>
             
             <Route path="/dashboard/*" element={<Navigate to="/dashboard" replace />} />
