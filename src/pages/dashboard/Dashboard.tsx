@@ -30,7 +30,7 @@ export default function Dashboard() {
     { 
       id: 'skills', 
       title: 'Add skills & interests', 
-      description: 'Tell us what you're good at and interested in learning', 
+      description: "Tell us what you're good at and interested in learning", 
       path: '/dashboard/skills',
       completed: false 
     },
