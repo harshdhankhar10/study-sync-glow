@@ -1,8 +1,7 @@
-
 import { ReactNode, useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarHeader, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
-import { User, Calendar, BookOpen, Award, LogOut, Clock } from 'lucide-react';
+import { User, Calendar, BookOpen, Award, LogOut, Clock, NotebookPen } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -18,7 +17,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { toast } = useToast();
   const [activePage, setActivePage] = useState('profile');
 
-  // Set the active page based on the current URL path
   useEffect(() => {
     const path = location.pathname;
     if (path.includes('/dashboard/profile')) {
@@ -60,6 +58,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { id: 'goals', title: 'Learning Goals', icon: BookOpen, url: '/dashboard/goals' },
     { id: 'skills', title: 'Skills & Interests', icon: Award, url: '/dashboard/skills' },
     { id: 'schedule', title: 'Study Schedule', icon: Clock, url: '/dashboard/schedule' },
+    { id: 'notes', title: 'Note Management', icon: NotebookPen, url: '/dashboard/notes' },
   ];
 
   return (
