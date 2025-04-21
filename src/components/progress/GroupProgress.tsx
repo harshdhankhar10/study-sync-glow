@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Cart
 import { Users, TrendingUp, Clock, Calendar, UserPlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import { auth } from '@/lib/firebase';
 import { useQuery } from '@tanstack/react-query';
 
@@ -27,7 +26,6 @@ export default function GroupProgress() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch group members
   const { data: groupMembers, isLoading: membersLoading } = useQuery({
     queryKey: ['groupMembers', user?.uid],
     queryFn: async () => {
@@ -37,13 +35,12 @@ export default function GroupProgress() {
         const membersRef = collection(db, 'groupMembers');
         const membersQuery = query(
           membersRef,
-          where('groupId', '==', 'default-group') // Assuming a default group
+          where('groupId', '==', 'default-group')
         );
         
         const querySnapshot = await getDocs(membersQuery);
         
         if (querySnapshot.empty) {
-          // If no data exists, create initial data
           const initialData = [
             { id: 1, name: "Alex Johnson", avatar: "", contribution: 87, role: "Group Leader" },
             { id: 2, name: "Jamie Smith", avatar: "", contribution: 75, role: "Note Taker" },
@@ -51,7 +48,6 @@ export default function GroupProgress() {
             { id: 4, name: "Morgan Lee", avatar: "", contribution: 68, role: "Discussion Coordinator" }
           ];
           
-          // Store initial data in Firestore
           const batch = initialData.map(async (item) => {
             await addDoc(membersRef, {
               groupId: 'default-group',
@@ -80,7 +76,6 @@ export default function GroupProgress() {
     enabled: !!user?.uid,
   });
 
-  // Fetch group progress
   const { data: groupProgress, isLoading: progressLoading } = useQuery({
     queryKey: ['groupProgress', user?.uid],
     queryFn: async () => {
@@ -97,7 +92,6 @@ export default function GroupProgress() {
         const querySnapshot = await getDocs(progressQuery);
         
         if (querySnapshot.empty) {
-          // If no data exists, create initial data
           const initialData = [
             { month: 'Jan', monthIndex: 0, groupAvg: 65, yourProgress: 60, classAvg: 55 },
             { month: 'Feb', monthIndex: 1, groupAvg: 68, yourProgress: 65, classAvg: 58 },
@@ -107,7 +101,6 @@ export default function GroupProgress() {
             { month: 'Jun', monthIndex: 5, groupAvg: 90, yourProgress: 88, classAvg: 75 },
           ];
           
-          // Store initial data in Firestore
           const batch = initialData.map(async (item) => {
             await addDoc(progressRef, {
               groupId: 'default-group',
@@ -138,7 +131,6 @@ export default function GroupProgress() {
     enabled: !!user?.uid,
   });
 
-  // Fetch collaboration data
   const { data: collaborationData, isLoading: collaborationLoading } = useQuery({
     queryKey: ['collaborationData', user?.uid],
     queryFn: async () => {
@@ -154,7 +146,6 @@ export default function GroupProgress() {
         const querySnapshot = await getDocs(collabQuery);
         
         if (querySnapshot.empty) {
-          // If no data exists, create initial data
           const initialData = [
             { name: 'Discussion Participation', value: 75 },
             { name: 'Task Completion', value: 82 },
@@ -162,7 +153,6 @@ export default function GroupProgress() {
             { name: 'Meeting Attendance', value: 90 }
           ];
           
-          // Store initial data in Firestore
           const batch = initialData.map(async (item) => {
             await addDoc(collabRef, {
               groupId: 'default-group',
@@ -189,7 +179,6 @@ export default function GroupProgress() {
     enabled: !!user?.uid,
   });
 
-  // Fetch upcoming meetings
   const { data: upcomingMeetings, isLoading: meetingsLoading } = useQuery({
     queryKey: ['upcomingMeetings', user?.uid],
     queryFn: async () => {
@@ -208,14 +197,12 @@ export default function GroupProgress() {
         const querySnapshot = await getDocs(meetingsQuery);
         
         if (querySnapshot.empty) {
-          // If no data exists, create initial data
           const initialData = [
             { title: "Group Study: Advanced Calculus", date: "Tomorrow, 3:00 PM" },
             { title: "Project Planning Meeting", date: "Friday, 5:30 PM" },
             { title: "Exam Preparation Session", date: "Sunday, 10:00 AM" }
           ];
           
-          // Store initial data in Firestore
           const batch = initialData.map(async (item, index) => {
             const meetingDate = new Date();
             meetingDate.setDate(meetingDate.getDate() + index + 1);
