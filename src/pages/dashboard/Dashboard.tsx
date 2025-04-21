@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,12 +13,14 @@ import {
   where, 
   getDocs, 
   orderBy, 
-  limit 
+  limit,
+  Timestamp 
 } from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import StudyMetrics from '@/components/dashboard/overview/StudyMetrics';
 import RecentActivity, { ActivityItem } from '@/components/dashboard/overview/RecentActivity';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -220,12 +221,29 @@ export default function Dashboard() {
       );
       try {
         const snapshot = await getDocs(notesQuery);
-        return snapshot.docs.map(doc => ({
-          id: doc.id,
-          title: doc.data().title || 'Untitled Note',
-          updatedAt: doc.data().updatedAt?.toDate?.() || new Date(),
-          ...doc.data()
-        }));
+        return snapshot.docs.map(doc => {
+          const data = doc.data();
+          // Properly handle the updatedAt timestamp
+          let formattedDate;
+          if (data.updatedAt instanceof Timestamp) {
+            formattedDate = data.updatedAt.toDate();
+          } else if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+            formattedDate = data.updatedAt.toDate();
+          } else if (data.updatedAt) {
+            // Try to parse as a date if it's a string or number
+            formattedDate = new Date(data.updatedAt);
+          } else {
+            formattedDate = new Date(); // Fallback to current date if no date available
+          }
+          
+          return {
+            id: doc.id,
+            title: data.title || 'Untitled Note',
+            updatedAt: formattedDate,
+            content: data.content || '',
+            ...data
+          };
+        });
       } catch (error) {
         console.error('Error fetching notes:', error);
         return [];
@@ -295,6 +313,24 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // Helper function to safely format dates
+  const formatDate = (date: any): string => {
+    try {
+      if (!date) return 'Date not available';
+      
+      // If it's a Firestore Timestamp
+      if (date instanceof Timestamp || (date && typeof date.toDate === 'function')) {
+        return format(date.toDate(), 'MMM d, yyyy');
+      }
+      
+      // If it's a Date object or valid date string/number
+      return format(new Date(date), 'MMM d, yyyy');
+    } catch (error) {
+      console.error('Date formatting error:', error, date);
+      return 'Date not available';
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -390,9 +426,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {note.updatedAt instanceof Date 
-                        ? note.updatedAt.toLocaleDateString() 
-                        : new Date(note.updatedAt).toLocaleDateString()}
+                      {formatDate(note.updatedAt)}
                     </div>
                   </div>
                 ))}
@@ -438,9 +472,8 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <h4 className="font-medium text-sm">{session.title || 'Study Session'}</h4>
                       <p className="text-xs text-muted-foreground">
-                        {session.date?.toDate ? 
-                          session.date.toDate().toLocaleString() : 
-                          new Date(session.date).toLocaleString()}
+                        {session.date && formatDate(session.date)}
+                        {session.time ? ` • ${session.time}` : ''}
                       </p>
                     </div>
                     <div className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">
