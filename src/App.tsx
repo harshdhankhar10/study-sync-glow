@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
 // Pages
@@ -24,15 +24,6 @@ import { Toaster } from './components/ui/toaster';
 
 function App() {
   const { currentUser, loading } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    if (currentUser) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-    }
-  }, [currentUser]);
 
   if (loading) {
     return (
@@ -51,7 +42,11 @@ function App() {
         <Route path="/documentation" element={<Documentation />} />
 
         {/* Dashboard Routes */}
-        <Route path="/dashboard" element={<ProtectedRoute isAuthenticated={isAuthenticated} />}>
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Outlet />
+          </ProtectedRoute>
+        }>
           <Route path="" element={<DashboardRoutes />}>
             {/* Community Forum Routes */}
             <Route path="community-forum" element={<CommunityForum />} />

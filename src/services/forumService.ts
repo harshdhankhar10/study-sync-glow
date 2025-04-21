@@ -11,7 +11,7 @@ import {
   query, 
   where, 
   orderBy, 
-  limit, 
+  limit as firestoreLimit, 
   startAfter, 
   Timestamp,
   increment,
@@ -19,7 +19,7 @@ import {
   arrayRemove,
   serverTimestamp
 } from 'firebase/firestore';
-import { ForumPost, ForumComment, PostCategory, PollOption } from '@/types/forum';
+import { ForumPost, ForumComment, PostCategory, PollOption, PostTag } from '@/types/forum';
 import { GEMINI_API_KEY, GEMINI_ENDPOINT } from '@/lib/ai';
 
 // Collection references
@@ -83,7 +83,7 @@ export const getPost = async (postId: string): Promise<ForumPost | null> => {
 
 export const getPosts = async (
   category?: PostCategory,
-  limit: number = 10,
+  limitCount: number = 10,
   lastPost?: ForumPost
 ) => {
   try {
@@ -93,7 +93,7 @@ export const getPosts = async (
       q = query(q, where('category', '==', category));
     }
     
-    q = query(q, limit);
+    q = query(q, firestoreLimit(limitCount));
     
     if (lastPost) {
       q = query(q, startAfter(lastPost.createdAt));
