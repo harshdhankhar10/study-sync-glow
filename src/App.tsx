@@ -24,6 +24,7 @@ import MotivationCenter from "./pages/dashboard/MotivationCenter";
 import SkillMatchGrid from "./pages/dashboard/SkillMatchGrid";
 import AILearningHub from "./pages/dashboard/AILearningHub";
 import FlashcardsQuizzes from "./pages/dashboard/FlashcardsQuizzes";
+import Documentation from "./pages/Documentation";
 
 const App = () => {
   return (
@@ -51,6 +52,7 @@ const App = () => {
         <Route path="/dashboard/motivation" element={<ProtectedRoute><DashboardLayout><MotivationCenter /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/skillmatch-grid" element={<ProtectedRoute><DashboardLayout><SkillMatchGrid /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/flashcards-quizzes" element={<ProtectedRoute><DashboardLayout><FlashcardsQuizzes /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/documentation" element={<Documentation />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>

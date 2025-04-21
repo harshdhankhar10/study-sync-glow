@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
@@ -24,6 +23,9 @@ export const Navbar = () => {
               </a>
               <a href="#how-it-works" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
                 How It Works
+              </a>
+              <a href="/documentation" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+                Documentation
               </a>
               <a href="#testimonials" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
                 Testimonials
@@ -65,6 +67,9 @@ export const Navbar = () => {
             </a>
             <a href="#how-it-works" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
               How It Works
+            </a>
+            <a href="/documentation" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+              Documentation
             </a>
             <a href="#testimonials" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
               Testimonials
