@@ -6,6 +6,19 @@ import { CheckCircle, ChevronRight, Clock, UserPlus } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { auth } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { useQuery } from '@tanstack/react-query';
+
+const db = getFirestore();
+
+interface ProfileData {
+  fullName?: string;
+  bio?: string;
+  school?: string;
+  major?: string;
+  year?: string;
+  email?: string;
+}
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
@@ -19,13 +32,24 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
+  const { data: profileData } = useQuery({
+    queryKey: ['profile', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return null;
+      const docRef = doc(db, 'profiles', user.uid);
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists() ? docSnap.data() as ProfileData : null;
+    },
+    enabled: !!user?.uid,
+  });
+
   const setupTasks = [
     { 
       id: 'profile', 
       title: 'Complete your profile', 
       description: 'Add your personal and academic details', 
       path: '/dashboard/profile',
-      completed: false 
+      completed: !!profileData?.fullName && !!profileData?.school 
     },
     { 
       id: 'skills', 
