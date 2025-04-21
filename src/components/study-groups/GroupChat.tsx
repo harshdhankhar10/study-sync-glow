@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -43,40 +42,44 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   
   // Initialize socket connection
   useEffect(() => {
-    // This would be replaced with your real socket.io server URL
     const SOCKET_URL = 'https://studysync-sockets.onrender.com';
     
     socketRef.current = io(SOCKET_URL, {
       query: {
         groupId,
-        userId: currentUser?.uid || 'anonymous'
+        userId: currentUser?.uid || 'anonymous',
+        userName: currentUser?.displayName || currentUser?.email
       }
     });
     
     socketRef.current.on('connect', () => {
-      console.log('Socket connected');
+      console.log('Socket connected to group:', groupId);
+    });
+    
+    socketRef.current.on('error', (error: any) => {
+      console.error('Socket error:', error);
+      toast({
+        title: "Connection error",
+        description: "There was an error connecting to the chat. Please refresh the page.",
+        variant: "destructive"
+      });
     });
     
     socketRef.current.on('new-message', (newMsg: any) => {
-      // Only add the message if it's not from the current user
       if (newMsg.senderId !== currentUser?.uid) {
-        setMessages(prev => [
-          ...prev, 
-          {
-            id: newMsg.id,
-            senderId: newMsg.senderId,
-            senderName: newMsg.senderName,
-            content: newMsg.content,
-            timestamp: new Date(newMsg.timestamp)
-          }
-        ]);
+        setMessages(prev => [...prev, {
+          id: newMsg.id,
+          senderId: newMsg.senderId,
+          senderName: newMsg.senderName,
+          content: newMsg.content,
+          timestamp: new Date(newMsg.timestamp)
+        }]);
         
-        // Scroll to bottom on new message
         if (scrollAreaRef.current) {
           setTimeout(() => {
-            scrollAreaRef.current?.scrollTo({ 
-              top: scrollAreaRef.current.scrollHeight, 
-              behavior: 'smooth' 
+            scrollAreaRef.current?.scrollTo({
+              top: scrollAreaRef.current.scrollHeight,
+              behavior: 'smooth'
             });
           }, 100);
         }
@@ -88,7 +91,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
         socketRef.current.disconnect();
       }
     };
-  }, [groupId, currentUser]);
+  }, [groupId, currentUser, toast]);
 
   // Load initial messages
   useEffect(() => {
@@ -98,7 +101,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       try {
         setLoading(true);
         
-        // Set up real-time listener for messages
         const messagesRef = collection(db, 'groupMessages');
         const messagesQuery = query(
           messagesRef,
@@ -120,13 +122,11 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
             } as StudyGroupMessage;
           });
           
-          // Sort messages by timestamp (oldest first)
           messagesData.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
           
           setMessages(messagesData);
           setLoading(false);
           
-          // Scroll to bottom on initial load
           if (scrollAreaRef.current) {
             setTimeout(() => {
               scrollAreaRef.current?.scrollTo({ 
@@ -161,7 +161,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     try {
       setIsSending(true);
       
-      // Create message document
       const messageData = {
         groupId,
         senderId: currentUser.uid,
@@ -174,7 +173,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       
       const messageRef = await addDoc(collection(db, 'groupMessages'), messageData);
       
-      // Broadcast through socket.io
       if (socketRef.current) {
         socketRef.current.emit('send-message', {
           id: messageRef.id,
@@ -183,11 +181,8 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
         });
       }
       
-      // Clear input field
       setNewMessage('');
       
-      // This immediate update is useful for the current user to see their message right away
-      // The real-time listener will update with the server timestamp later
       setMessages(prev => [
         ...prev, 
         {
@@ -200,7 +195,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
         }
       ]);
       
-      // Scroll to bottom
       if (scrollAreaRef.current) {
         setTimeout(() => {
           scrollAreaRef.current?.scrollTo({ 
@@ -262,7 +256,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
             className="h-full px-6 py-4"
           >
             <div className="space-y-4">
-              {/* Welcome message at the top */}
               <div className="flex justify-center">
                 <div className="bg-muted px-4 py-2 rounded-lg text-sm text-center">
                   <p className="font-medium">Welcome to the {groupName} chat!</p>
@@ -317,7 +310,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
                 </div>
               ))}
               
-              {/* Add some padding at the bottom */}
               <div className="h-2" />
             </div>
           </ScrollArea>

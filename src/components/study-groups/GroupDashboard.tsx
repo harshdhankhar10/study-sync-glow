@@ -144,7 +144,18 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         return;
       }
       
-      // Create an invitation
+      // Create a member document directly
+      await addDoc(collection(db, 'groupMemberships'), {
+        groupId,
+        email: inviteEmail.toLowerCase(),
+        displayName: inviteEmail.split('@')[0], // Default display name from email
+        role: 'member',
+        joinedAt: serverTimestamp(),
+        invitedBy: currentUser.uid,
+        userId: null // This will be updated when the user joins
+      });
+      
+      // Create an invitation notification
       await addDoc(collection(db, 'groupInvitations'), {
         groupId,
         groupName: group?.name,
@@ -155,9 +166,21 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         createdAt: serverTimestamp()
       });
       
+      // Update group members count
+      const groupRef = doc(db, 'studyGroups', groupId);
+      await updateDoc(groupRef, {
+        membersCount: (group?.membersCount || 0) + 1
+      });
+      
       // Reset form and close dialog
       setInviteEmail('');
       setInviteDialogOpen(false);
+      
+      // Update local state
+      setGroup(prev => prev ? {
+        ...prev,
+        membersCount: (prev.membersCount || 0) + 1
+      } : null);
       
       toast({
         title: "Invitation sent",
@@ -257,34 +280,41 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
           {(userRole === 'owner' || userRole === 'admin') && (
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
+                <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Invite
+                  Invite Member
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <form onSubmit={handleInvite}>
                   <DialogHeader>
-                    <DialogTitle>Invite to {group.name}</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      Invite New Member
+                    </DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="email" className="text-right">
-                        Email
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">
+                        Email address
                       </Label>
                       <Input
                         id="email"
                         type="email"
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="user@example.com"
+                        placeholder="Enter their email address"
                         className="col-span-3"
                         required
                       />
+                      <p className="text-sm text-muted-foreground">
+                        They'll receive an invitation to join {group?.name}
+                      </p>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="submit">Send Invitation</Button>
+                    <Button type="submit" className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600">
+                      Send Invitation
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -294,7 +324,7 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
         <CardContent>
           <div className="space-y-4">
             {members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between">
+              <div key={member.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent/50 transition-colors">
                 <div className="flex items-center gap-3">
                   <Avatar>
                     <AvatarImage src={member.photoURL || undefined} alt={member.displayName} />
@@ -307,8 +337,10 @@ export default function GroupDashboard({ groupId }: GroupDashboardProps) {
                     <p className="text-sm text-muted-foreground">{member.email}</p>
                   </div>
                 </div>
-                <div className="text-sm font-medium capitalize text-muted-foreground">
-                  {member.role}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium capitalize px-2 py-1 rounded-full bg-primary/10 text-primary">
+                    {member.role}
+                  </span>
                 </div>
               </div>
             ))}
