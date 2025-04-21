@@ -6,9 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getStreakData, StreakData } from '@/services/streakService';
 import { generateAIInsights } from '@/lib/ai';
 import { useToast } from '@/hooks/use-toast';
-import { Flame, Brain, Trophy } from 'lucide-react';
+import { Flame, Brain, Trophy, Star, Book } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import MicroMentor from '@/components/study-buddy/MicroMentor';
 
 interface AIInsights {
   weeklyFeedback: {
@@ -37,6 +39,7 @@ export default function MotivationCenter() {
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [aiInsights, setAIInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [microMentorOpen, setMicroMentorOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -77,13 +80,22 @@ export default function MotivationCenter() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          Motivation Center
-        </h2>
-        <p className="text-gray-500 mt-1">
-          Track your progress, celebrate achievements, and stay motivated with AI-powered insights
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Motivation Center
+          </h2>
+          <p className="text-gray-500 mt-1">
+            Track your progress, celebrate achievements, and stay motivated with AI-powered insights
+          </p>
+        </div>
+        <Button 
+          onClick={() => setMicroMentorOpen(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600"
+        >
+          <Brain className="h-4 w-4" />
+          <span>MicroMentor</span>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -332,6 +344,13 @@ export default function MotivationCenter() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* MicroMentor Modal */}
+      <MicroMentor 
+        isOpen={microMentorOpen} 
+        onClose={() => setMicroMentorOpen(false)} 
+        userId={currentUser?.uid || ''}
+      />
     </div>
   );
 }
