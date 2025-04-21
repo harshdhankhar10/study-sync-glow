@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import {
   Sheet,
@@ -18,13 +19,16 @@ import {
   Clock,
   FileText,
   Flame,
-  LucideIcon,
   Settings,
   User,
   Users,
   Star,
-  Brain
+  Brain,
+  type LucideProps
 } from 'lucide-react';
+
+// Define the LucideIcon type as a React component that takes LucideProps
+type LucideIcon = React.ComponentType<LucideProps>;
 
 interface SideNavItem {
   title: string;
