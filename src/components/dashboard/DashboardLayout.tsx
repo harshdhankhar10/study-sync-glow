@@ -80,6 +80,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { title: 'Skills', href: '/dashboard/skills', icon: BookOpen },
     { title: 'Notes', href: '/dashboard/notes', icon: Book },
     { title: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
+    { title: 'Motivation', href: '/dashboard/motivation', icon: Star },
     { title: 'Study Streaks', href: '/dashboard/streaks', icon: Flame },
     { title: 'Study Groups', href: '/dashboard/study-groups', icon: Users },
     { title: 'AI Insights', href: '/dashboard/ai-insights', icon: Lightbulb },
