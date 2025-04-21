@@ -31,7 +31,6 @@ const Notes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
-  // Fetch notes on component mount
   useEffect(() => {
     if (currentUser) {
       fetchNotes();
@@ -46,7 +45,6 @@ const Notes = () => {
       const fetchedNotes = await getUserNotes(currentUser.uid);
       setNotes(fetchedNotes);
       
-      // Set active note to the first note if no active note
       if (fetchedNotes.length > 0 && !activeNote) {
         setActiveNote(fetchedNotes[0]);
       }
@@ -67,13 +65,11 @@ const Notes = () => {
 
     setIsCreating(true);
     try {
-      // Process tags
       const tags = newNoteTags
         .split(",")
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
       
-      // Handle file upload if a file is selected
       let fileUrl = "";
       let fileName = "";
       let fileType = "";
@@ -86,7 +82,6 @@ const Notes = () => {
         fileSize = selectedFile.size;
       }
       
-      // Create new note
       const newNote: Omit<Note, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: currentUser.uid,
         title: newNoteTitle,
@@ -100,14 +95,12 @@ const Notes = () => {
       
       const noteId = await addNote(newNote);
       
-      // Reset form
       setNewNoteTitle("");
       setNewNoteContent("");
       setNewNoteTags("");
       setSelectedFile(null);
       setIsCreating(false);
       
-      // Refresh notes
       fetchNotes();
       
       toast.success("Note created successfully");
@@ -125,10 +118,8 @@ const Notes = () => {
     try {
       await deleteNote(noteId, fileUrl);
       
-      // Update state
       setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
       
-      // If the deleted note was active, set active note to null
       if (activeNote && activeNote.id === noteId) {
         setActiveNote(null);
       }
@@ -145,7 +136,6 @@ const Notes = () => {
     try {
       await generateSummaryForNote(noteId);
       
-      // Refresh notes to get the updated note with summary
       await fetchNotes();
       
       toast.success("Summary generated successfully");
@@ -171,12 +161,10 @@ const Notes = () => {
 
   const filteredNotes = notes
     .filter(note => {
-      // Filter by tag if a filter is selected
       if (filterTag && !note.tags.includes(filterTag)) {
         return false;
       }
       
-      // Filter by search term
       if (searchTerm) {
         const searchLower = searchTerm.toLowerCase();
         return (
@@ -190,10 +178,8 @@ const Notes = () => {
     })
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-  // Get all unique tags from notes
   const allTags = Array.from(new Set(notes.flatMap(note => note.tags))).sort();
 
-  // Function to open summary in new tab
   const openSummaryInNewTab = (summary: string, title: string) => {
     const newWindow = window.open('', '_blank');
     if (newWindow) {
@@ -202,13 +188,47 @@ const Notes = () => {
           <head>
             <title>Summary: ${title}</title>
             <style>
-              body { font-family: system-ui; padding: 2rem; max-width: 800px; margin: 0 auto; }
-              h1 { color: #6E59A5; }
-              .content { white-space: pre-wrap; line-height: 1.6; }
+              body { 
+                font-family: system-ui; 
+                padding: 2rem; 
+                max-width: 800px; 
+                margin: 0 auto; 
+                line-height: 1.8;
+                color: #333;
+              }
+              h1 { 
+                color: #6E59A5; 
+                font-size: 2rem;
+                margin-bottom: 2rem;
+                border-bottom: 2px solid #E5DEFF;
+                padding-bottom: 1rem;
+              }
+              .metadata {
+                color: #666;
+                font-size: 0.9rem;
+                margin-bottom: 2rem;
+              }
+              .content { 
+                white-space: pre-wrap; 
+                line-height: 1.8;
+                background: #F8F9FC;
+                padding: 2rem;
+                border-radius: 8px;
+                border: 1px solid #E5DEFF;
+              }
+              .highlight {
+                background: #E5DEFF;
+                padding: 0.2rem 0.4rem;
+                border-radius: 4px;
+                font-weight: 500;
+              }
             </style>
           </head>
           <body>
             <h1>AI Summary: ${title}</h1>
+            <div class="metadata">
+              Generated on ${format(new Date(), 'MMMM d, yyyy • h:mm a')}
+            </div>
             <div class="content">${summary}</div>
           </body>
         </html>
@@ -303,7 +323,6 @@ const Notes = () => {
         
         <TabsContent value="my-notes" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sidebar with notes list */}
             <div className="lg:col-span-1">
               <Card>
                 <CardHeader className="pb-3">
@@ -408,7 +427,6 @@ const Notes = () => {
               </Card>
             </div>
             
-            {/* Note content view */}
             <div className="lg:col-span-2">
               <Card className="h-full">
                 {activeNote ? (
@@ -446,23 +464,43 @@ const Notes = () => {
                           <div className="whitespace-pre-wrap">{activeNote.content}</div>
                           
                           {activeNote.summary && (
-                            <div className="mt-6">
-                              <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-lg font-semibold flex items-center gap-1">
-                                  <Brain size={18} /> AI Summary
+                            <div className="mt-6 space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold flex items-center gap-2 text-primary">
+                                  <Brain size={20} />
+                                  AI-Generated Summary
                                 </h3>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => openSummaryInNewTab(activeNote.summary!, activeNote.title)}
+                                  className="hover:bg-primary/10"
                                 >
-                                  <ExternalLink size={16} className="mr-1" />
+                                  <ExternalLink size={16} className="mr-2" />
                                   Open in New Tab
                                 </Button>
                               </div>
                               <Separator className="my-2" />
-                              <div className="bg-accent/50 p-4 rounded-md whitespace-pre-wrap">
-                                {activeNote.summary}
+                              <div className="bg-accent/30 p-6 rounded-lg border border-accent space-y-4">
+                                <div className="prose prose-slate max-w-none">
+                                  {activeNote.summary.split('\n').map((paragraph, index) => (
+                                    <p key={index} className="text-primary-foreground leading-relaxed">
+                                      {paragraph.startsWith('•') ? (
+                                        <span className="flex items-start gap-2">
+                                          <span className="text-primary mt-1.5">•</span>
+                                          <span>{paragraph.substring(1)}</span>
+                                        </span>
+                                      ) : paragraph.includes(':') ? (
+                                        <>
+                                          <strong className="text-primary">{paragraph.split(':')[0]}:</strong>
+                                          {paragraph.split(':')[1]}
+                                        </>
+                                      ) : (
+                                        paragraph
+                                      )}
+                                    </p>
+                                  ))}
+                                </div>
                               </div>
                             </div>
                           )}
@@ -565,7 +603,6 @@ const Notes = () => {
         
         <TabsContent value="ai-tools" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Upload & Summarize Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Upload & Summarize</CardTitle>
@@ -691,7 +728,6 @@ const Notes = () => {
               </CardFooter>
             </Card>
 
-            {/* AI Summary Generator Card */}
             <Card>
               <CardHeader>
                 <CardTitle>AI Summary Generator</CardTitle>
@@ -769,7 +805,6 @@ const Notes = () => {
             </Card>
           </div>
 
-          {/* How It Works Card */}
           <Card>
             <CardHeader>
               <CardTitle>How It Works</CardTitle>
