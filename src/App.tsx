@@ -1,2 +1,49 @@
 
 import HelpCenter from "./pages/dashboard/HelpCenter";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import DashboardLayout from "./components/dashboard/DashboardLayout";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Schedule from "./pages/dashboard/Schedule";
+import Availability from "./pages/dashboard/Availability";
+import Goals from "./pages/dashboard/Goals";
+import Skills from "./pages/dashboard/Skills";
+import Notes from "./pages/dashboard/Notes";
+import Progress from "./pages/dashboard/Progress";
+import StudyGroups from "./pages/dashboard/StudyGroups";
+import AIInsights from "./pages/dashboard/AIInsights";
+import Profile from "./pages/dashboard/Profile";
+import Settings from "./pages/dashboard/Settings";
+import GroupMatch from "./pages/dashboard/GroupMatch";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+const App = () => {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/schedule" element={<ProtectedRoute><DashboardLayout><Schedule /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/availability" element={<ProtectedRoute><DashboardLayout><Availability /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/goals" element={<ProtectedRoute><DashboardLayout><Goals /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/skills" element={<ProtectedRoute><DashboardLayout><Skills /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/notes" element={<ProtectedRoute><DashboardLayout><Notes /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/progress" element={<ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/study-groups" element={<ProtectedRoute><DashboardLayout><StudyGroups /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/ai-insights" element={<ProtectedRoute><DashboardLayout><AIInsights /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardLayout><Profile /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/group-match" element={<ProtectedRoute><DashboardLayout><GroupMatch /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/help" element={<ProtectedRoute><DashboardLayout><HelpCenter /></DashboardLayout></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Router>
+  );
+};
+
+export default App;
