@@ -1,4 +1,3 @@
-
 import React, { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
@@ -30,7 +29,8 @@ import {
   BarChart3,
   BookOpen,
   Users,
-  Lightbulb
+  Lightbulb,
+  HelpCircle
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
@@ -79,6 +79,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { title: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
     { title: 'Study Groups', href: '/dashboard/study-groups', icon: Users },
     { title: 'AI Insights', href: '/dashboard/ai-insights', icon: Lightbulb },
+    { title: 'Help Center', href: '/dashboard/help', icon: HelpCircle },
   ];
 
   const accountLinks: SidebarLink[] = [
