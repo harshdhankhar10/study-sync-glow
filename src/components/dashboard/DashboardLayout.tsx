@@ -24,7 +24,8 @@ import {
   Users,
   Star,
   Brain,
-  type LucideProps
+  type LucideProps,
+  LineChart, // Added LineChart for Progress
 } from 'lucide-react';
 
 // Define the LucideIcon type as a React component that takes LucideProps
@@ -60,7 +61,7 @@ const sidebarNavItems: SideNavItem[] = [
   {
     title: "Progress",
     href: "/dashboard/progress",
-    icon: LucideIcon,
+    icon: LineChart, // Changed from LucideIcon to LineChart
   },
   {
     title: "Study Groups",
