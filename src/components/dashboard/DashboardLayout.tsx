@@ -1,9 +1,9 @@
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarHeader, SidebarSeparator, SidebarFooter } from '@/components/ui/sidebar';
 import { User, Calendar, BookOpen, Award, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -14,8 +14,25 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [activePage, setActivePage] = useState('profile');
+
+  // Set the active page based on the current URL path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/dashboard/profile')) {
+      setActivePage('profile');
+    } else if (path.includes('/dashboard/availability')) {
+      setActivePage('availability');
+    } else if (path.includes('/dashboard/goals')) {
+      setActivePage('goals');
+    } else if (path.includes('/dashboard/skills')) {
+      setActivePage('skills');
+    } else if (path === '/dashboard') {
+      setActivePage('dashboard');
+    }
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     try {
@@ -35,6 +52,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const menuItems = [
+    { id: 'dashboard', title: 'Dashboard', icon: User, url: '/dashboard' },
     { id: 'profile', title: 'Profile Setup', icon: User, url: '/dashboard/profile' },
     { id: 'availability', title: 'Availability', icon: Calendar, url: '/dashboard/availability' },
     { id: 'goals', title: 'Learning Goals', icon: BookOpen, url: '/dashboard/goals' },

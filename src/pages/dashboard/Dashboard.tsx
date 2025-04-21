@@ -47,7 +47,7 @@ export default function Dashboard() {
       description: 'Set clear objectives for your study journey', 
       path: '/dashboard/goals',
       completed: false 
-    },
+    }
   ];
 
   const progressPercentage = Math.round((setupTasks.filter(task => task.completed).length / setupTasks.length) * 100);
