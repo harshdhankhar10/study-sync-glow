@@ -1,14 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Award, Star, Lock, BookOpen, Clock, Lightbulb, Users, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Award, Star, Lock, BookOpen, Clock, Lightbulb, Users, TrendingUp, CheckCircle2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { getFirestore, collection, query, where, getDocs, addDoc, doc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 interface AchievementProps {
+  id?: string;
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -19,7 +27,7 @@ interface AchievementProps {
   reward?: string;
 }
 
-const Achievement = ({ title, description, icon, progress, unlocked, category, date, reward }: AchievementProps) => {
+const Achievement = ({ title, description, icon, progress, unlocked, category, date, reward, id }: AchievementProps) => {
   return (
     <Card className={`transition-all duration-200 ${unlocked ? 'border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50' : 'border-gray-200'}`}>
       <CardContent className="p-6">
@@ -66,10 +74,42 @@ const Achievement = ({ title, description, icon, progress, unlocked, category, d
   );
 };
 
+const iconOptions = [
+  { name: "Book", component: <BookOpen className="h-5 w-5" /> },
+  { name: "Clock", component: <Clock className="h-5 w-5" /> },
+  { name: "Lightbulb", component: <Lightbulb className="h-5 w-5" /> },
+  { name: "Users", component: <Users className="h-5 w-5" /> },
+  { name: "TrendingUp", component: <TrendingUp className="h-5 w-5" /> },
+  { name: "Award", component: <Award className="h-5 w-5" /> },
+  { name: "CheckCircle", component: <CheckCircle2 className="h-5 w-5" /> },
+];
+
 export default function Achievements() {
   const { toast } = useToast();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isAddAchievementOpen, setIsAddAchievementOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [user, setUser] = useState<any>(null);
+  const db = getFirestore();
+  const queryClient = useQueryClient();
+
+  // Form state for adding new achievement
+  const [newAchievement, setNewAchievement] = useState({
+    title: "",
+    description: "",
+    icon: "Book",
+    category: "academic",
+    progress: 0,
+    reward: ""
+  });
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const categories = [
     { id: "all", name: "All Achievements" },
@@ -79,86 +119,185 @@ export default function Achievements() {
     { id: "milestones", name: "Milestones" }
   ];
 
-  const achievements: AchievementProps[] = [
-    {
-      title: "First Steps Scholar",
-      description: "Complete your first 5 study sessions",
-      icon: <BookOpen className="h-5 w-5" />,
-      progress: 100,
-      unlocked: true,
-      category: "academic",
-      date: "2 weeks ago",
-      reward: "Bronze Scholar Badge"
+  // Fetch achievements
+  const { data: achievements, isLoading: achievementsLoading } = useQuery({
+    queryKey: ['achievements', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return [];
+      
+      try {
+        const achievementsRef = collection(db, 'achievements');
+        const achievementsQuery = query(
+          achievementsRef,
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(achievementsQuery);
+        
+        if (querySnapshot.empty) {
+          // If no data exists, create initial data
+          const initialData = [
+            {
+              title: "First Steps Scholar",
+              description: "Complete your first 5 study sessions",
+              icon: "Book",
+              progress: 100,
+              unlocked: true,
+              category: "academic",
+              date: "2 weeks ago",
+              reward: "Bronze Scholar Badge"
+            },
+            {
+              title: "Consistency Champion",
+              description: "Study for 7 consecutive days",
+              icon: "Clock",
+              progress: 100,
+              unlocked: true,
+              category: "consistency",
+              date: "1 week ago",
+              reward: "Silver Consistency Badge"
+            },
+            {
+              title: "Knowledge Explorer",
+              description: "Create 10 detailed notes on different topics",
+              icon: "Lightbulb",
+              progress: 70,
+              unlocked: false,
+              category: "academic"
+            },
+            {
+              title: "Team Player",
+              description: "Participate in 5 group study sessions",
+              icon: "Users",
+              progress: 60,
+              unlocked: false,
+              category: "collaboration"
+            },
+            {
+              title: "Goal Getter",
+              description: "Complete 3 learning goals ahead of schedule",
+              icon: "TrendingUp",
+              progress: 100,
+              unlocked: true,
+              category: "milestones",
+              date: "3 days ago",
+              reward: "Gold Achievement Badge"
+            },
+            {
+              title: "Discussion Leader",
+              description: "Start and lead 3 group discussions",
+              icon: "Users",
+              progress: 33,
+              unlocked: false,
+              category: "collaboration"
+            },
+            {
+              title: "Note Taking Pro",
+              description: "Use AI to generate summaries for 5 notes",
+              icon: "CheckCircle",
+              progress: 80,
+              unlocked: false,
+              category: "academic"
+            },
+            {
+              title: "Monthly Milestone",
+              description: "Complete all your study goals for a month",
+              icon: "Award",
+              progress: 25,
+              unlocked: false,
+              category: "milestones"
+            }
+          ];
+          
+          // Store initial data in Firestore
+          const batch = initialData.map(async (item, index) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (index * 3 + Math.floor(Math.random() * 5)));
+            
+            await addDoc(achievementsRef, {
+              userId: user.uid,
+              title: item.title,
+              description: item.description,
+              icon: item.icon,
+              progress: item.progress,
+              unlocked: item.unlocked,
+              category: item.category,
+              date: item.date,
+              reward: item.reward,
+              createdAt: date,
+            });
+          });
+          
+          await Promise.all(batch);
+          
+          return initialData;
+        }
+        
+        return querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+      } catch (error) {
+        console.error("Error fetching achievements:", error);
+        return [];
+      }
     },
-    {
-      title: "Consistency Champion",
-      description: "Study for 7 consecutive days",
-      icon: <Clock className="h-5 w-5" />,
-      progress: 100,
-      unlocked: true,
-      category: "consistency",
-      date: "1 week ago",
-      reward: "Silver Consistency Badge"
-    },
-    {
-      title: "Knowledge Explorer",
-      description: "Create 10 detailed notes on different topics",
-      icon: <Lightbulb className="h-5 w-5" />,
-      progress: 70,
-      unlocked: false,
-      category: "academic"
-    },
-    {
-      title: "Team Player",
-      description: "Participate in 5 group study sessions",
-      icon: <Users className="h-5 w-5" />,
-      progress: 60,
-      unlocked: false,
-      category: "collaboration"
-    },
-    {
-      title: "Goal Getter",
-      description: "Complete 3 learning goals ahead of schedule",
-      icon: <TrendingUp className="h-5 w-5" />,
-      progress: 100,
-      unlocked: true,
-      category: "milestones",
-      date: "3 days ago",
-      reward: "Gold Achievement Badge"
-    },
-    {
-      title: "Discussion Leader",
-      description: "Start and lead 3 group discussions",
-      icon: <Users className="h-5 w-5" />,
-      progress: 33,
-      unlocked: false,
-      category: "collaboration"
-    },
-    {
-      title: "Note Taking Pro",
-      description: "Use AI to generate summaries for 5 notes",
-      icon: <CheckCircle2 className="h-5 w-5" />,
-      progress: 80,
-      unlocked: false,
-      category: "academic"
-    },
-    {
-      title: "Monthly Milestone",
-      description: "Complete all your study goals for a month",
-      icon: <Award className="h-5 w-5" />,
-      progress: 25,
-      unlocked: false,
-      category: "milestones"
+    enabled: !!user?.uid,
+  });
+
+  const handleAddAchievement = async () => {
+    if (!user?.uid) return;
+    
+    try {
+      const achievementsRef = collection(db, 'achievements');
+      await addDoc(achievementsRef, {
+        userId: user.uid,
+        title: newAchievement.title,
+        description: newAchievement.description,
+        icon: newAchievement.icon,
+        progress: parseInt(newAchievement.progress.toString()),
+        unlocked: parseInt(newAchievement.progress.toString()) === 100,
+        category: newAchievement.category,
+        date: parseInt(newAchievement.progress.toString()) === 100 ? "Just now" : undefined,
+        reward: parseInt(newAchievement.progress.toString()) === 100 ? newAchievement.reward : undefined,
+        createdAt: serverTimestamp(),
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['achievements'] });
+      
+      setNewAchievement({
+        title: "",
+        description: "",
+        icon: "Book",
+        category: "academic",
+        progress: 0,
+        reward: ""
+      });
+      
+      setIsAddAchievementOpen(false);
+      
+      toast({
+        title: "Achievement Added",
+        description: "Your new achievement has been created successfully.",
+      });
+    } catch (error) {
+      console.error("Error adding achievement:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add achievement. Please try again.",
+        variant: "destructive",
+      });
     }
-  ];
+  };
 
   const filteredAchievements = selectedCategory === "all" 
     ? achievements 
-    : achievements.filter(achievement => achievement.category === selectedCategory);
+    : achievements?.filter((achievement: any) => achievement.category === selectedCategory);
 
-  const unlockedAchievements = achievements.filter(a => a.unlocked).length;
-  const totalAchievements = achievements.length;
-  const progressPercentage = Math.round((unlockedAchievements / totalAchievements) * 100);
+  const unlockedAchievements = achievements?.filter((a: any) => a.unlocked).length || 0;
+  const totalAchievements = achievements?.length || 0;
+  const progressPercentage = totalAchievements > 0 ? Math.round((unlockedAchievements / totalAchievements) * 100) : 0;
 
   const shareAchievements = () => {
     setIsShareDialogOpen(false);
@@ -168,15 +307,26 @@ export default function Achievements() {
     });
   };
 
+  const getIconComponent = (iconName: string) => {
+    const icon = iconOptions.find(i => i.name === iconName);
+    return icon ? icon.component : <BookOpen className="h-5 w-5" />;
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>Achievement Progress</CardTitle>
-            <CardDescription>
-              You've unlocked {unlockedAchievements} out of {totalAchievements} achievements
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle>Achievement Progress</CardTitle>
+              <CardDescription>
+                You've unlocked {unlockedAchievements} out of {totalAchievements} achievements
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsAddAchievementOpen(true)} className="bg-gradient-to-r from-indigo-600 to-purple-600">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Achievement
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="mb-6">
@@ -211,14 +361,18 @@ export default function Achievements() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center gap-4">
-            {unlockedAchievements > 0 ? (
+            {achievementsLoading ? (
+              <div className="h-40 flex items-center justify-center">
+                <p>Loading badges...</p>
+              </div>
+            ) : unlockedAchievements > 0 ? (
               <div className="grid grid-cols-2 gap-4 w-full">
                 {achievements
-                  .filter(a => a.unlocked)
-                  .map((achievement, i) => (
-                    <div key={i} className="flex flex-col items-center text-center">
+                  ?.filter((a: any) => a.unlocked)
+                  .map((achievement: any, i: number) => (
+                    <div key={achievement.id || i} className="flex flex-col items-center text-center">
                       <div className="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center text-white">
-                        {achievement.icon}
+                        {getIconComponent(achievement.icon)}
                       </div>
                       <span className="text-xs mt-2 font-medium">{achievement.title}</span>
                     </div>
@@ -247,9 +401,9 @@ export default function Achievements() {
                 </DialogHeader>
                 <div className="space-y-4 my-4">
                   {achievements
-                    .filter(a => a.unlocked)
-                    .map((achievement, i) => (
-                      <div key={i} className="flex items-center gap-3">
+                    ?.filter((a: any) => a.unlocked)
+                    .map((achievement: any, i: number) => (
+                      <div key={achievement.id || i} className="flex items-center gap-3">
                         <input type="checkbox" id={`share-${i}`} defaultChecked className="rounded" />
                         <label htmlFor={`share-${i}`} className="text-sm">{achievement.title}</label>
                       </div>
@@ -266,20 +420,120 @@ export default function Achievements() {
         </Card>
       </div>
 
+      {/* Add Achievement Sheet */}
+      <Sheet open={isAddAchievementOpen} onOpenChange={setIsAddAchievementOpen}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Add New Achievement</SheetTitle>
+            <SheetDescription>
+              Create a custom achievement to track your learning goals.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Achievement Title</Label>
+              <Input 
+                id="title" 
+                value={newAchievement.title} 
+                onChange={(e) => setNewAchievement({...newAchievement, title: e.target.value})}
+                placeholder="Enter achievement title" 
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea 
+                id="description" 
+                value={newAchievement.description} 
+                onChange={(e) => setNewAchievement({...newAchievement, description: e.target.value})}
+                placeholder="What needs to be accomplished?" 
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <select 
+                id="category"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={newAchievement.category}
+                onChange={(e) => setNewAchievement({...newAchievement, category: e.target.value})}
+              >
+                <option value="academic">Academic</option>
+                <option value="consistency">Consistency</option>
+                <option value="collaboration">Collaboration</option>
+                <option value="milestones">Milestones</option>
+              </select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="icon">Icon</Label>
+              <select 
+                id="icon"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={newAchievement.icon}
+                onChange={(e) => setNewAchievement({...newAchievement, icon: e.target.value})}
+              >
+                {iconOptions.map(icon => (
+                  <option key={icon.name} value={icon.name}>{icon.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="progress">Current Progress ({newAchievement.progress}%)</Label>
+              <Input 
+                id="progress" 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={newAchievement.progress} 
+                onChange={(e) => setNewAchievement({...newAchievement, progress: parseInt(e.target.value)})}
+                className="w-full" 
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="reward">Reward (when completed)</Label>
+              <Input 
+                id="reward" 
+                value={newAchievement.reward} 
+                onChange={(e) => setNewAchievement({...newAchievement, reward: e.target.value})}
+                placeholder="e.g. Gold Scholar Badge" 
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 mt-4">
+            <Button onClick={handleAddAchievement} className="bg-gradient-to-r from-indigo-600 to-purple-600">
+              Add Achievement
+            </Button>
+            <Button variant="outline" onClick={() => setIsAddAchievementOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredAchievements.map((achievement, index) => (
-          <Achievement
-            key={index}
-            title={achievement.title}
-            description={achievement.description}
-            icon={achievement.icon}
-            progress={achievement.progress}
-            unlocked={achievement.unlocked}
-            category={achievement.category}
-            date={achievement.date}
-            reward={achievement.reward}
-          />
-        ))}
+        {achievementsLoading ? (
+          <div className="col-span-2 h-40 flex items-center justify-center">
+            <p>Loading achievements...</p>
+          </div>
+        ) : (
+          filteredAchievements?.map((achievement: any, index: number) => (
+            <Achievement
+              key={achievement.id || index}
+              id={achievement.id}
+              title={achievement.title}
+              description={achievement.description}
+              icon={getIconComponent(achievement.icon)}
+              progress={achievement.progress}
+              unlocked={achievement.unlocked}
+              category={achievement.category}
+              date={achievement.date}
+              reward={achievement.reward}
+            />
+          ))
+        )}
       </div>
     </div>
   );
