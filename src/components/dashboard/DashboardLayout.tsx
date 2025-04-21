@@ -1,4 +1,6 @@
+
 import React, { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -10,10 +12,10 @@ import {
 import { Menu } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { SidebarSection } from "./sidebar/SidebarSection";
+import { SidebarItem, SidebarSection as SidebarSectionType } from "@/types/sidebar";
 import {
   CalendarRange,
   FileText,
@@ -24,81 +26,82 @@ import {
   User,
   Book,
   LineChart,
-  Flame,
   LogOut,
 } from 'lucide-react';
 
-interface SideNavItem {
-  title: string;
-  href: string;
-  icon: React.ComponentType<LucideProps>;
-  badge?: string;
-}
+const mainNavItems: SidebarSectionType = {
+  title: "Navigation",
+  items: [
+    {
+      title: "Dashboard",
+      href: "/dashboard",
+      icon: CalendarRange,
+    },
+    {
+      title: "Schedule",
+      href: "/dashboard/schedule",
+      icon: CalendarRange,
+      badge: "New",
+    },
+    {
+      title: "Notes",
+      href: "/dashboard/notes",
+      icon: FileText,
+    },
+    {
+      title: "Skills & Goals",
+      href: "/dashboard/skills",
+      icon: Star,
+    },
+    {
+      title: "Progress",
+      href: "/dashboard/progress",
+      icon: LineChart,
+    },
+    {
+      title: "Study Groups",
+      href: "/dashboard/study-groups",
+      icon: Users,
+    },
+  ],
+};
 
-const sidebarNavItems: SideNavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: CalendarRange,
-  },
-  {
-    title: "Schedule",
-    href: "/dashboard/schedule",
-    icon: CalendarRange,
-    badge: "New",
-  },
-  {
-    title: "Notes",
-    href: "/dashboard/notes",
-    icon: FileText,
-  },
-  {
-    title: "Skills & Goals",
-    href: "/dashboard/skills",
-    icon: Star,
-  },
-  {
-    title: "Progress",
-    href: "/dashboard/progress",
-    icon: LineChart,
-  },
-  {
-    title: "Study Groups",
-    href: "/dashboard/study-groups",
-    icon: Users,
-  },
-  {
-    title: "AI Insights",
-    href: "/dashboard/ai-insights",
-    icon: Brain,
-  },
-  {
-    title: "Study Buddy",
-    href: "/dashboard/study-buddy",
-    icon: Book,
-  },
-];
+const toolsNavItems: SidebarSectionType = {
+  title: "Tools",
+  items: [
+    {
+      title: "AI Insights",
+      href: "/dashboard/ai-insights",
+      icon: Brain,
+    },
+    {
+      title: "Study Buddy",
+      href: "/dashboard/study-buddy",
+      icon: Book,
+    },
+  ],
+};
 
-const settingsNavItems: SideNavItem[] = [
-  {
-    title: "Profile",
-    href: "/dashboard/profile",
-    icon: User,
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-  },
-];
+const settingsNavItems: SidebarSectionType = {
+  title: "Settings",
+  items: [
+    {
+      title: "Profile",
+      href: "/dashboard/profile",
+      icon: User,
+    },
+    {
+      title: "Settings",
+      href: "/dashboard/settings",
+      icon: Settings,
+    },
+  ],
+};
 
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -110,69 +113,56 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
   };
 
-  const isActiveRoute = (href: string) => {
-    return window.location.pathname === href;
-  };
-
-  const NavItem = ({ item }: { item: SideNavItem }) => (
-    <Button
-      key={item.href}
-      variant="ghost"
-      className={`w-full justify-start rounded-lg px-3 py-2 text-sm font-medium transition-colors h-10 ${
-        isActiveRoute(item.href)
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-      }`}
-      onClick={() => {
-        navigate(item.href);
-        setIsMenuOpen(false);
-      }}
-    >
-      <item.icon className="w-4 h-4 mr-3 shrink-0" />
-      <span className="flex-1">{item.title}</span>
-      {item.badge && (
-        <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-2 py-0">
-          {item.badge}
-        </Badge>
-      )}
-    </Button>
-  );
-
   const SidebarContent = () => (
-    <div className="flex h-full flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        {sidebarNavItems.map((item) => (
-          <NavItem key={item.href} item={item} />
-        ))}
+    <div className="flex h-full flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <SidebarSection
+          section={mainNavItems}
+          currentPath={location.pathname}
+          onItemClick={() => setIsMenuOpen(false)}
+        />
       </div>
-      <Separator className="my-2 bg-sidebar-border/50" />
-      <div className="flex flex-col gap-1">
-        {settingsNavItems.map((item) => (
-          <NavItem key={item.href} item={item} />
-        ))}
+
+      <div className="flex flex-col gap-2">
+        <SidebarSection
+          section={toolsNavItems}
+          currentPath={location.pathname}
+          onItemClick={() => setIsMenuOpen(false)}
+        />
       </div>
+
+      <Separator className="my-2" />
+
+      <div className="flex flex-col gap-2">
+        <SidebarSection
+          section={settingsNavItems}
+          currentPath={location.pathname}
+          onItemClick={() => setIsMenuOpen(false)}
+        />
+      </div>
+
       <div className="mt-auto">
-        <Separator className="my-2 bg-sidebar-border/50" />
+        <Separator className="my-4" />
         <div className="px-3 py-2">
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar className="h-9 w-9 border border-sidebar-border/50">
+          <div className="flex items-center gap-3 mb-4">
+            <Avatar className="h-10 w-10 border-2 border-indigo-100">
               <AvatarImage src={currentUser?.photoURL || ""} />
-              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">
+              <AvatarFallback className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
                 {currentUser?.displayName?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-sidebar-foreground truncate">
+              <p className="text-sm font-medium text-gray-900 truncate">
                 {currentUser?.displayName || "User"}
               </p>
-              <p className="text-xs text-sidebar-foreground/70 truncate">
+              <p className="text-xs text-gray-500 truncate">
                 {currentUser?.email}
               </p>
             </div>
           </div>
           <Button
             variant="outline"
-            className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground"
+            className="w-full justify-start text-gray-600 hover:text-gray-900 hover:bg-gray-100/50"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 mr-2" />
@@ -184,7 +174,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50/50">
       <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <SheetTrigger asChild>
           <Button
@@ -195,34 +185,32 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <Menu className="w-5 h-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0 bg-sidebar border-r">
-          <SheetHeader className="p-4 text-left border-b border-sidebar-border">
-            <SheetTitle className="text-sidebar-foreground font-semibold">StudySync</SheetTitle>
-            <SheetDescription className="text-sidebar-foreground/70">
-              Your study assistant
+        <SheetContent side="left" className="w-72 p-6">
+          <SheetHeader className="text-left mb-6">
+            <SheetTitle className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              StudySync
+            </SheetTitle>
+            <SheetDescription>
+              Your personal study assistant
             </SheetDescription>
           </SheetHeader>
-          <div className="px-2 py-4">
-            <SidebarContent />
-          </div>
+          <SidebarContent />
         </SheetContent>
       </Sheet>
 
       <div className="flex">
-        <aside className="hidden md:flex w-72 shrink-0 h-screen sticky top-0 border-r border-sidebar-border bg-sidebar overflow-y-auto">
-          <div className="flex flex-col w-full">
-            <div className="p-6 border-b border-sidebar-border">
-              <h1 className="text-xl font-semibold text-sidebar-foreground">StudySync</h1>
-              <p className="text-sm text-sidebar-foreground/70">Your study assistant</p>
-            </div>
-            <div className="flex-1 p-4">
-              <SidebarContent />
-            </div>
+        <aside className="hidden md:flex flex-col w-72 shrink-0 h-screen sticky top-0 border-r border-gray-200 bg-white overflow-y-auto p-6">
+          <div className="mb-6">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              StudySync
+            </h1>
+            <p className="text-sm text-gray-500">Your personal study assistant</p>
           </div>
+          <SidebarContent />
         </aside>
 
-        <main className="flex-1 min-h-screen">
-          <div className="container mx-auto p-6">
+        <main className="flex-1 min-h-screen p-6">
+          <div className="max-w-6xl mx-auto">
             {children}
           </div>
         </main>
