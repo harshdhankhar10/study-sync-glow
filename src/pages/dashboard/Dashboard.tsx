@@ -3,29 +3,42 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { ChevronRight } from 'lucide-react';
-import { auth } from '@/lib/firebase';
+import { ChevronRight, Book, Calendar, Clock, FileText } from 'lucide-react';
+import { auth, db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  orderBy, 
+  limit 
+} from 'firebase/firestore';
 import { useQuery } from '@tanstack/react-query';
 import StudyMetrics from '@/components/dashboard/overview/StudyMetrics';
 import RecentActivity, { ActivityItem } from '@/components/dashboard/overview/RecentActivity';
-
-const db = getFirestore();
+import { useToast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((currentUser) => {
       setUser(currentUser);
+      if (!currentUser) {
+        // Redirect to login if not authenticated
+        navigate('/login');
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   // Fetch study metrics
-  const { data: metricsData } = useQuery({
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
     queryKey: ['studyMetrics', user?.uid],
     queryFn: async () => {
       if (!user?.uid) return null;
@@ -40,82 +53,106 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
-  // Fetch study groups count
-  const { data: groupsData } = useQuery({
+  // Fetch study groups with a more comprehensive approach
+  const { data: groupsData, isLoading: groupsLoading } = useQuery({
     queryKey: ['studyGroups', user?.uid],
     queryFn: async () => {
       if (!user?.uid) return { count: 0, recent: [] };
       
-      const membershipsRef = collection(db, 'groupMemberships');
-      const userMembershipsQuery = query(
-        membershipsRef,
-        where('userId', '==', user.uid)
-      );
-      
-      const emailMembershipsQuery = query(
-        membershipsRef,
-        where('email', '==', user.email)
-      );
-      
-      const [userIdResults, emailResults] = await Promise.all([
-        getDocs(userMembershipsQuery),
-        getDocs(emailMembershipsQuery)
-      ]);
-      
-      const uniqueGroupIds = new Set<string>();
-      
-      userIdResults.docs.forEach(doc => {
-        uniqueGroupIds.add(doc.data().groupId);
-      });
-      
-      emailResults.docs.forEach(doc => {
-        uniqueGroupIds.add(doc.data().groupId);
-      });
-      
-      const groupCount = uniqueGroupIds.size;
-      
-      const groupIds = Array.from(uniqueGroupIds).slice(0, 3);
-      const recentGroups = [];
-      
-      for (const groupId of groupIds) {
-        const groupRef = doc(db, 'studyGroups', groupId);
-        const groupSnap = await getDoc(groupRef);
-        if (groupSnap.exists()) {
-          recentGroups.push({
-            id: groupSnap.id,
-            ...groupSnap.data()
-          });
+      try {
+        const membershipsRef = collection(db, 'groupMemberships');
+        const userMembershipsQuery = query(
+          membershipsRef,
+          where('userId', '==', user.uid)
+        );
+        
+        const emailMembershipsQuery = query(
+          membershipsRef,
+          where('email', '==', user.email)
+        );
+        
+        const [userIdResults, emailResults] = await Promise.all([
+          getDocs(userMembershipsQuery),
+          getDocs(emailMembershipsQuery)
+        ]);
+        
+        const uniqueGroupIds = new Set<string>();
+        
+        userIdResults.docs.forEach(doc => {
+          uniqueGroupIds.add(doc.data().groupId);
+        });
+        
+        emailResults.docs.forEach(doc => {
+          uniqueGroupIds.add(doc.data().groupId);
+        });
+        
+        const groupCount = uniqueGroupIds.size;
+        
+        const groupIds = Array.from(uniqueGroupIds).slice(0, 3);
+        const recentGroups = [];
+        
+        for (const groupId of groupIds) {
+          const groupRef = doc(db, 'studyGroups', groupId);
+          const groupSnap = await getDoc(groupRef);
+          if (groupSnap.exists()) {
+            const data = groupSnap.data();
+            recentGroups.push({
+              id: groupSnap.id,
+              name: data.name || 'Unnamed Group',
+              subject: data.subject || 'General',
+              membersCount: data.membersCount || 1,
+              lastActivity: data.updatedAt || data.createdAt || new Date(),
+              ...data
+            });
+          }
         }
+        
+        // Log successful group retrieval
+        console.log(`Found ${groupCount} groups for user`, user.uid);
+        
+        return {
+          count: groupCount,
+          recent: recentGroups
+        };
+      } catch (error) {
+        console.error('Error fetching study groups:', error);
+        toast({
+          title: "Failed to load study groups",
+          description: "We'll try again shortly. Please refresh if the issue persists.",
+          variant: "destructive"
+        });
+        return { count: 0, recent: [] };
       }
-      
-      return {
-        count: groupCount,
-        recent: recentGroups
-      };
     },
     enabled: !!user?.uid,
   });
 
-  // Fetch recent activity
-  const { data: recentActivity } = useQuery({
+  // Fetch recent activity with error handling
+  const { data: recentActivity, isLoading: activityLoading } = useQuery({
     queryKey: ['recentActivity', user?.uid],
     queryFn: async () => {
       if (!user?.uid) return [];
-      const activityRef = collection(db, 'activity');
-      const activityQuery = query(
-        activityRef,
-        where('userId', '==', user.uid),
-        orderBy('timestamp', 'desc'),
-        limit(5)
-      );
-      const snapshot = await getDocs(activityQuery);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        type: doc.data().type || 'study',
-        title: doc.data().title || 'Study session',
-        timestamp: doc.data().timestamp || new Date().toISOString(),
-        ...doc.data()
-      }));
+      try {
+        const activityRef = collection(db, 'activity');
+        const activityQuery = query(
+          activityRef,
+          where('userId', '==', user.uid),
+          orderBy('timestamp', 'desc'),
+          limit(5)
+        );
+        const snapshot = await getDocs(activityQuery);
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          type: doc.data().type || 'study',
+          title: doc.data().title || 'Study session',
+          timestamp: doc.data().timestamp?.toDate?.() || new Date().toISOString(),
+          details: doc.data().details || '',
+          ...doc.data()
+        })) as ActivityItem[];
+      } catch (error) {
+        console.error('Error fetching activity:', error);
+        return [] as ActivityItem[];
+      }
     },
     enabled: !!user?.uid,
   });
@@ -169,6 +206,34 @@ export default function Dashboard() {
     enabled: !!user?.uid,
   });
 
+  // Fetch recent notes
+  const { data: recentNotes } = useQuery({
+    queryKey: ['recentNotes', user?.uid],
+    queryFn: async () => {
+      if (!user?.uid) return [];
+      const notesRef = collection(db, 'notes');
+      const notesQuery = query(
+        notesRef,
+        where('userId', '==', user.uid),
+        orderBy('updatedAt', 'desc'),
+        limit(3)
+      );
+      try {
+        const snapshot = await getDocs(notesQuery);
+        return snapshot.docs.map(doc => ({
+          id: doc.id,
+          title: doc.data().title || 'Untitled Note',
+          updatedAt: doc.data().updatedAt?.toDate?.() || new Date(),
+          ...doc.data()
+        }));
+      } catch (error) {
+        console.error('Error fetching notes:', error);
+        return [];
+      }
+    },
+    enabled: !!user?.uid,
+  });
+
   const setupTasks = [
     { 
       id: 'profile', 
@@ -218,6 +283,18 @@ export default function Dashboard() {
           timestamp: new Date(Date.now() - 172800000).toISOString()
         }
       ];
+
+  // Loading state - prevent white screen
+  if (!user && !auth.currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="h-8 w-8 border-4 border-t-indigo-600 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -284,6 +361,110 @@ export default function Dashboard() {
         <div className="md:col-span-2">
           <RecentActivity activities={formattedActivity} />
         </div>
+      </div>
+
+      {/* Additional Dashboard Sections - Recent Notes & Upcoming Sessions */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {/* Recent Notes */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Recent Notes</CardTitle>
+              <CardDescription>Your latest study materials</CardDescription>
+            </div>
+            <FileText className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {recentNotes && recentNotes.length > 0 ? (
+              <div className="space-y-4">
+                {recentNotes.map((note: any) => (
+                  <div 
+                    key={note.id} 
+                    className="flex items-center p-3 rounded-md border hover:bg-accent cursor-pointer"
+                    onClick={() => navigate('/dashboard/notes')}
+                  >
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{note.title}</h4>
+                      <p className="text-xs text-muted-foreground truncate max-w-[250px]">
+                        {note.content?.substring(0, 60) || 'No content'}...
+                      </p>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {note.updatedAt instanceof Date 
+                        ? note.updatedAt.toLocaleDateString() 
+                        : new Date(note.updatedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Book className="h-8 w-8 text-muted-foreground mb-2" />
+                <h4 className="font-medium mb-1">No notes yet</h4>
+                <p className="text-xs text-muted-foreground mb-4">Start creating study notes</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/dashboard/notes')}
+                >
+                  Create a note
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Sessions */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle>Upcoming Sessions</CardTitle>
+              <CardDescription>Your scheduled study time</CardDescription>
+            </div>
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {upcomingSessions && upcomingSessions.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingSessions.map((session: any) => (
+                  <div 
+                    key={session.id} 
+                    className="flex items-center p-3 rounded-md border hover:bg-accent cursor-pointer"
+                    onClick={() => navigate('/dashboard/schedule')}
+                  >
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                      <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{session.title || 'Study Session'}</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {session.date?.toDate ? 
+                          session.date.toDate().toLocaleString() : 
+                          new Date(session.date).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">
+                      {session.duration || 60} min
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Calendar className="h-8 w-8 text-muted-foreground mb-2" />
+                <h4 className="font-medium mb-1">No upcoming sessions</h4>
+                <p className="text-xs text-muted-foreground mb-4">Schedule your next study time</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/dashboard/schedule')}
+                >
+                  Create a session
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
