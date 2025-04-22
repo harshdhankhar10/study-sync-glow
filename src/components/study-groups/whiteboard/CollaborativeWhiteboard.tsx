@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { fabric } from 'fabric';
+import { Canvas as FabricCanvas, IEvent, Path, Circle, Rect, IText } from 'fabric';
 import { WhiteboardToolbar } from './WhiteboardToolbar';
 import { UserCursor } from './UserCursor';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ type WhiteboardCursor = {
 
 export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteboardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+  const fabricCanvasRef = useRef<FabricCanvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>('select');
   const [activeColor, setActiveColor] = useState<string>('#000000');
   const [brushSize, setBrushSize] = useState<number>(2);
@@ -55,7 +55,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       console.log("Initializing fabric canvas");
       
       // Initialize the fabricCanvas
-      const canvas = new fabric.Canvas(canvasRef.current, {
+      const canvas = new FabricCanvas(canvasRef.current, {
         width: containerWidth,
         height: 500,
         backgroundColor: '#ffffff',
@@ -109,7 +109,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       window.addEventListener('resize', handleResize);
       
       // Setup path created event to sync drawing
-      canvas.on('path:created', (e: any) => {
+      canvas.on('path:created', (e: IEvent<Event>) => {
         if (socket && currentUser && e.path) {
           const pathAsJson = e.path.toJSON();
           
@@ -123,7 +123,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       });
       
       // Setup object modified event for collaborative editing
-      canvas.on('object:modified', (e: any) => {
+      canvas.on('object:modified', (e: IEvent<Event>) => {
         if (socket && currentUser && e.target) {
           const objectAsJson = e.target.toJSON();
           
@@ -183,14 +183,14 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         
         // Add object to canvas based on type
         if (data.objectType === 'path' && data.path) {
-          fabric.util.enlivenObjects([data.path], function(objects) {
+          FabricCanvas.util.enlivenObjects([data.path], function(objects) {
             if (objects && objects[0] && canvas) {
               canvas.add(objects[0]);
               canvas.renderAll();
             }
           }, 'fabric');
         } else if (data.objectType === 'rect') {
-          const rect = new fabric.Rect({
+          const rect = new Rect({
             left: data.left,
             top: data.top,
             width: data.width,
@@ -202,7 +202,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
           canvas.add(rect);
           canvas.renderAll();
         } else if (data.objectType === 'circle') {
-          const circle = new fabric.Circle({
+          const circle = new Circle({
             left: data.left,
             top: data.top,
             radius: data.radius,
@@ -213,7 +213,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
           canvas.add(circle);
           canvas.renderAll();
         } else if (data.objectType === 'text') {
-          const text = new fabric.IText(data.text || 'Text', {
+          const text = new IText(data.text || 'Text', {
             left: data.left,
             top: data.top,
             fill: data.fill,
@@ -325,7 +325,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
     
     if (tool === 'text') {
       // Add a text object at the center of the canvas
-      const text = new fabric.IText("Text", {
+      const text = new IText("Text", {
         left: canvas.width! / 2,
         top: canvas.height! / 2,
         fontSize: 20,
@@ -357,7 +357,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       }
     } else if (tool === 'rect') {
       // Create a rectangle at the mouse position
-      const rect = new fabric.Rect({
+      const rect = new Rect({
         left: mousePositionRef.current.x - 50,
         top: mousePositionRef.current.y - 50,
         width: 100,
@@ -387,7 +387,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       }
     } else if (tool === 'circle') {
       // Create a circle at the mouse position
-      const circle = new fabric.Circle({
+      const circle = new Circle({
         left: mousePositionRef.current.x - 50,
         top: mousePositionRef.current.y - 50,
         radius: 50,
@@ -431,7 +431,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       const activeObject = canvas.getActiveObject();
       if (activeObject) {
         if (activeObject.type === 'i-text') {
-          (activeObject as fabric.IText).set('fill', color);
+          (activeObject as IText).set('fill', color);
         } else {
           activeObject.set('fill', color);
           activeObject.set('stroke', color);
