@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, Circle, Rect, IText, Path, StaticCanvas } from 'fabric';
+import { Canvas, Circle, Rect, IText, Path } from 'fabric';
 import { WhiteboardToolbar } from './WhiteboardToolbar';
 import { UserCursor } from './UserCursor';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,13 +53,15 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         isDrawingMode: false,
       });
       
-      // Make sure the canvas is fully initialized before setting brush properties
-      if (fabricCanvas && fabricCanvas.freeDrawingBrush) {
+      setCanvas(fabricCanvas);
+      
+      // Set brush properties after canvas is initialized and brush is created
+      if (fabricCanvas.freeDrawingBrush) {
         fabricCanvas.freeDrawingBrush.color = activeColor;
         fabricCanvas.freeDrawingBrush.width = brushSize;
+      } else {
+        console.error("freeDrawingBrush is not available");
       }
-      
-      setCanvas(fabricCanvas);
       
       // Emit join event
       if (socket && currentUser) {
@@ -231,11 +233,13 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   
   // Handle tool changes
   useEffect(() => {
-    if (!canvas || !canvas.freeDrawingBrush) return;
+    if (!canvas) return;
     
+    // Enable/disable drawing mode based on active tool
     canvas.isDrawingMode = activeTool === 'draw';
     
-    if (activeTool === 'draw') {
+    // Configure the brush if it exists and drawing mode is active
+    if (canvas.isDrawingMode && canvas.freeDrawingBrush) {
       canvas.freeDrawingBrush.color = activeColor;
       canvas.freeDrawingBrush.width = brushSize;
     }
@@ -270,7 +274,9 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const handleToolChange = (tool: string) => {
     setActiveTool(tool);
     
-    if (tool === 'text' && canvas) {
+    if (!canvas) return;
+    
+    if (tool === 'text') {
       // Add a text object at the center of the canvas
       const text = new IText("Text", {
         left: canvas.width! / 2,
@@ -287,18 +293,20 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       text.selectAll();
       
       // Emit text object
-      socket.emit('whiteboard-object-added', {
-        groupId,
-        userId: currentUser?.uid,
-        objectType: 'text',
-        left: text.left,
-        top: text.top,
-        text: text.text,
-        fill: activeColor,
-        fontSize: 20,
-        fontFamily: 'Arial',
-      });
-    } else if (tool === 'rect' && canvas) {
+      if (socket && currentUser) {
+        socket.emit('whiteboard-object-added', {
+          groupId,
+          userId: currentUser.uid,
+          objectType: 'text',
+          left: text.left,
+          top: text.top,
+          text: text.text,
+          fill: activeColor,
+          fontSize: 20,
+          fontFamily: 'Arial',
+        });
+      }
+    } else if (tool === 'rect') {
       // Create a rectangle at the mouse position
       const rect = new Rect({
         left: mousePositionRef.current.x - 50,
@@ -314,19 +322,21 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       canvas.setActiveObject(rect);
       
       // Emit rectangle object
-      socket.emit('whiteboard-object-added', {
-        groupId,
-        userId: currentUser?.uid,
-        objectType: 'rect',
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-        fill: activeColor,
-        stroke: activeColor,
-        strokeWidth: 2,
-      });
-    } else if (tool === 'circle' && canvas) {
+      if (socket && currentUser) {
+        socket.emit('whiteboard-object-added', {
+          groupId,
+          userId: currentUser.uid,
+          objectType: 'rect',
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+          fill: activeColor,
+          stroke: activeColor,
+          strokeWidth: 2,
+        });
+      }
+    } else if (tool === 'circle') {
       // Create a circle at the mouse position
       const circle = new Circle({
         left: mousePositionRef.current.x - 50,
@@ -341,17 +351,19 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       canvas.setActiveObject(circle);
       
       // Emit circle object
-      socket.emit('whiteboard-object-added', {
-        groupId,
-        userId: currentUser?.uid,
-        objectType: 'circle',
-        left: circle.left,
-        top: circle.top,
-        radius: circle.radius,
-        fill: activeColor,
-        stroke: activeColor,
-        strokeWidth: 2,
-      });
+      if (socket && currentUser) {
+        socket.emit('whiteboard-object-added', {
+          groupId,
+          userId: currentUser.uid,
+          objectType: 'circle',
+          left: circle.left,
+          top: circle.top,
+          radius: circle.radius,
+          fill: activeColor,
+          stroke: activeColor,
+          strokeWidth: 2,
+        });
+      }
     }
   };
   
@@ -415,17 +427,26 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   useEffect(() => {
     if (!canvas || !socket || !currentUser) return;
     
-    canvas.on('path:created', (e) => {
-      const path = e.path as any; // Cast to any to access path data
+    const pathCreatedHandler = (e: any) => {
+      const pathObj = e.path as any;
+      
+      // Ensure the path object is properly accessed
+      if (!pathObj) {
+        console.error("Path object is undefined");
+        return;
+      }
+      
+      // Access the path data safely
+      const pathData = pathObj.path || [];
       
       // Emit the path to other clients
       socket.emit('whiteboard-object-added', {
         groupId,
         userId: currentUser.uid,
         objectType: 'path',
-        path: path.path, // Access path data from any type
-        stroke: path.stroke,
-        strokeWidth: path.strokeWidth,
+        path: pathData,
+        stroke: pathObj.stroke,
+        strokeWidth: pathObj.strokeWidth,
       });
       
       // Save to lastEventRef to avoid duplicates
@@ -433,14 +454,16 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         groupId,
         userId: currentUser.uid,
         objectType: 'path',
-        path: path.path, // Access path data from any type
-        stroke: path.stroke,
-        strokeWidth: path.strokeWidth,
+        path: pathData,
+        stroke: pathObj.stroke,
+        strokeWidth: pathObj.strokeWidth,
       });
-    });
+    };
+    
+    canvas.on('path:created', pathCreatedHandler);
     
     return () => {
-      canvas.off('path:created');
+      canvas.off('path:created', pathCreatedHandler);
     };
   }, [canvas, socket, currentUser, groupId]);
   
