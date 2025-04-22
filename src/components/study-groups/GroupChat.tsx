@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -49,7 +48,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<any>(null);
   
-  // Video call states
   const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -59,8 +57,8 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const [activeParticipants, setActiveParticipants] = useState<string[]>([]);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionsRef = useRef<Record<string, RTCPeerConnection>>({});
-  
-  // Initialize socket connection
+  const remoteVideoRefs = useRef<{ [key: string]: React.RefObject<HTMLVideoElement> }>({});
+
   useEffect(() => {
     const SOCKET_URL = 'https://studysync-sockets.onrender.com';
     
@@ -106,15 +104,12 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       }
     });
     
-    // WebRTC signaling events
     socketRef.current.on('user-joined-call', (userId: string, username: string) => {
       setActiveParticipants(prev => [...prev, userId]);
       
-      // Send system message about user joining call
       const joinMessage = `${username} joined the call`;
       sendSystemMessage(joinMessage);
       
-      // If we have local stream, create an offer for the new participant
       if (localStream) {
         createPeerConnection(userId);
         createOffer(userId);
@@ -124,17 +119,14 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     socketRef.current.on('user-left-call', (userId: string, username: string) => {
       setActiveParticipants(prev => prev.filter(id => id !== userId));
       
-      // Send system message about user leaving call
       const leaveMessage = `${username} left the call`;
       sendSystemMessage(leaveMessage);
       
-      // Clean up peer connection
       if (peerConnectionsRef.current[userId]) {
         peerConnectionsRef.current[userId].close();
         delete peerConnectionsRef.current[userId];
       }
       
-      // Remove remote stream
       setRemoteStreams(prev => {
         const newStreams = { ...prev };
         delete newStreams[userId];
@@ -146,7 +138,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       console.log('Received offer from:', senderUserId);
       
       if (!localStream) {
-        // We need to get our local stream first
         await initializeLocalStream(isVideoCall);
       }
       
@@ -190,12 +181,10 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     });
     
     return () => {
-      // Clean up media streams
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
       }
       
-      // Close peer connections
       Object.values(peerConnectionsRef.current).forEach(connection => {
         connection.close();
       });
@@ -206,7 +195,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     };
   }, [groupId, currentUser, toast, isVideoCall]);
 
-  // Set up local video stream when the call dialog opens
   useEffect(() => {
     if (isCallDialogOpen && localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
@@ -214,16 +202,13 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     
     return () => {
       if (!isCallDialogOpen && localStream) {
-        // Stop all tracks when the call dialog is closed
         localStream.getTracks().forEach(track => track.stop());
         setLocalStream(null);
         
-        // Notify other participants that we're leaving the call
         if (socketRef.current) {
           socketRef.current.emit('leave-call', groupId, currentUser?.uid, currentUser?.displayName || currentUser?.email);
         }
         
-        // Close all peer connections
         Object.values(peerConnectionsRef.current).forEach(connection => {
           connection.close();
         });
@@ -234,7 +219,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     };
   }, [isCallDialogOpen, localStream, groupId, currentUser]);
 
-  // Function to initialize local media stream
   const initializeLocalStream = async (withVideo: boolean) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -255,9 +239,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     }
   };
 
-  // Create a WebRTC peer connection for a specific user
   const createPeerConnection = (userId: string) => {
-    // Check if connection already exists
     if (peerConnectionsRef.current[userId]) {
       return peerConnectionsRef.current[userId];
     }
@@ -271,21 +253,18 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     
     const peerConnection = new RTCPeerConnection(configuration);
     
-    // Add local stream tracks to the connection
     if (localStream) {
       localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, localStream);
       });
     }
     
-    // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         socketRef.current.emit('call-ice-candidate', event.candidate, userId, currentUser?.uid);
       }
     };
     
-    // Handle incoming tracks
     peerConnection.ontrack = (event) => {
       console.log('Received remote track from:', userId);
       
@@ -301,7 +280,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     return peerConnection;
   };
 
-  // Create and send WebRTC offer
   const createOffer = async (userId: string) => {
     const peerConnection = peerConnectionsRef.current[userId];
     
@@ -317,7 +295,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     }
   };
 
-  // Start a call (video or audio)
   const startCall = async (withVideo: boolean) => {
     setIsVideoCall(withVideo);
     
@@ -326,15 +303,12 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     
     setIsCallDialogOpen(true);
     
-    // Notify other participants that we're joining the call
     socketRef.current.emit('join-call', groupId, currentUser?.uid, currentUser?.displayName || currentUser?.email, withVideo);
     
-    // Send system message about starting a call
     const callType = withVideo ? 'video' : 'audio';
     sendSystemMessage(`${currentUser?.displayName || currentUser?.email} started a ${callType} call`);
   };
 
-  // Toggle video
   const toggleVideo = () => {
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0];
@@ -345,7 +319,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     }
   };
 
-  // Toggle audio
   const toggleAudio = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -356,12 +329,10 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     }
   };
 
-  // End call
   const endCall = () => {
     setIsCallDialogOpen(false);
   };
 
-  // Send a system message
   const sendSystemMessage = async (content: string) => {
     try {
       const messageData = {
@@ -379,7 +350,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     }
   };
 
-  // Load initial messages
   useEffect(() => {
     async function loadMessages() {
       if (!currentUser || !groupId) return;
@@ -438,7 +408,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     loadMessages();
   }, [currentUser, groupId, toast]);
 
-  // Handle sending new message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -500,6 +469,19 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       setIsSending(false);
     }
   };
+
+  useEffect(() => {
+    Object.entries(remoteStreams).forEach(([userId, stream]) => {
+      if (!remoteVideoRefs.current[userId]) {
+        remoteVideoRefs.current[userId] = React.createRef<HTMLVideoElement>();
+      }
+      
+      const videoElement = remoteVideoRefs.current[userId]?.current;
+      if (videoElement && videoElement.srcObject !== stream) {
+        videoElement.srcObject = stream;
+      }
+    });
+  }, [remoteStreams]);
 
   const formatTimestamp = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -645,7 +627,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
         </CardFooter>
       </Card>
       
-      {/* Call Dialog */}
       <Dialog open={isCallDialogOpen} onOpenChange={setIsCallDialogOpen}>
         <DialogContent className="sm:max-w-[80vw] h-[80vh] flex flex-col">
           <DialogHeader>
@@ -661,7 +642,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
           
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {/* Local Video */}
               <div className="relative bg-slate-800 rounded-lg overflow-hidden">
                 {isVideoCall ? (
                   <video
@@ -687,20 +667,25 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
                 </div>
               </div>
               
-              {/* Remote Videos */}
-              {Object.entries(remoteStreams).map(([userId, stream]) => (
-                <div key={userId} className="relative bg-slate-800 rounded-lg overflow-hidden">
-                  <video
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                    srcObject={stream}
-                  />
-                  <div className="absolute bottom-2 left-2 text-white bg-black/50 px-2 py-1 rounded text-sm">
-                    {userId}
+              {Object.entries(remoteStreams).map(([userId, stream]) => {
+                if (!remoteVideoRefs.current[userId]) {
+                  remoteVideoRefs.current[userId] = React.createRef<HTMLVideoElement>();
+                }
+                
+                return (
+                  <div key={userId} className="relative bg-slate-800 rounded-lg overflow-hidden">
+                    <video
+                      ref={remoteVideoRefs.current[userId]}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-2 left-2 text-white bg-black/50 px-2 py-1 rounded text-sm">
+                      {userId}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           
