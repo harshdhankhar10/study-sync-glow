@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas as FabricCanvas, IEvent, Path, Circle, Rect, IText } from 'fabric';
+import { Canvas as FabricCanvas, Path, Circle, Rect, IText } from 'fabric';
 import { WhiteboardToolbar } from './WhiteboardToolbar';
 import { UserCursor } from './UserCursor';
 import { useAuth } from '@/contexts/AuthContext';
@@ -109,7 +109,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       window.addEventListener('resize', handleResize);
       
       // Setup path created event to sync drawing
-      canvas.on('path:created', (e: IEvent<Event>) => {
+      canvas.on('path:created', (e: any) => {
         if (socket && currentUser && e.path) {
           const pathAsJson = e.path.toJSON();
           
@@ -123,7 +123,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       });
       
       // Setup object modified event for collaborative editing
-      canvas.on('object:modified', (e: IEvent<Event>) => {
+      canvas.on('object:modified', (e: any) => {
         if (socket && currentUser && e.target) {
           const objectAsJson = e.target.toJSON();
           
@@ -183,12 +183,13 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         
         // Add object to canvas based on type
         if (data.objectType === 'path' && data.path) {
-          FabricCanvas.util.enlivenObjects([data.path], function(objects) {
-            if (objects && objects[0] && canvas) {
-              canvas.add(objects[0]);
-              canvas.renderAll();
-            }
-          }, 'fabric');
+          // Use fabric.js utility to create objects from JSON
+          // Use a more direct approach to create paths from JSON
+          const path = new Path(data.path);
+          if (path) {
+            canvas.add(path);
+            canvas.renderAll();
+          }
         } else if (data.objectType === 'rect') {
           const rect = new Rect({
             left: data.left,
