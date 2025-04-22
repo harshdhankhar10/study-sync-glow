@@ -12,6 +12,7 @@ import Availability from "./pages/dashboard/Availability";
 import Goals from "./pages/dashboard/Goals";
 import Skills from "./pages/dashboard/Skills";
 import Notes from "./pages/dashboard/Notes";
+import Tasks from "./pages/dashboard/Tasks";
 import Progress from "./pages/dashboard/Progress";
 import StudyGroups from "./pages/dashboard/StudyGroups";
 import AIInsights from "./pages/dashboard/AIInsights";
@@ -44,6 +45,7 @@ const App = () => {
         <Route path="/dashboard/goals" element={<ProtectedRoute><DashboardLayout><Goals /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/skills" element={<ProtectedRoute><DashboardLayout><Skills /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/notes" element={<ProtectedRoute><DashboardLayout><Notes /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/tasks" element={<ProtectedRoute><DashboardLayout><Tasks /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/progress" element={<ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/study-groups" element={<ProtectedRoute><DashboardLayout><StudyGroups /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/study-groups/:groupId" element={<ProtectedRoute><DashboardLayout><StudyGroupDetail /></DashboardLayout></ProtectedRoute>} />

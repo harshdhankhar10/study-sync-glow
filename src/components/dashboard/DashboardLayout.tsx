@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -13,7 +12,7 @@ import {
   User, Book, BarChart2, LogOut, Target, Globe, Home, Award,
   Clock, MessageSquare, HelpCircle, ChevronDown, Plus, Search,
   Bell, ChevronRight, PieChart, BookOpen, Clipboard, CheckCircle, Layout, LineChart, 
-  LightbulbIcon
+  LightbulbIcon, CheckSquare
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -43,6 +42,12 @@ const navigationItems: SidebarSectionType[] = [
         title: "Notes",
         href: "/dashboard/notes",
         icon: FileText,
+      },
+      {
+        title: "Tasks",
+        href: "/dashboard/tasks",
+        icon: CheckSquare,
+        badge: "New",
       },
     ],
   },
