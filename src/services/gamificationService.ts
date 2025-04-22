@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, Timestamp, increment, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, orderBy, limit as firestoreLimit, Timestamp, increment, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { StreakData } from './streakService';
 
@@ -290,7 +290,7 @@ export const awardBadge = async (userId: string, badgeId: string): Promise<Badge
   }
 };
 
-export const getLeaderboard = async (groupId?: string, limit = 10): Promise<LeaderboardEntry[]> => {
+export const getLeaderboard = async (groupId?: string, limitCount = 10): Promise<LeaderboardEntry[]> => {
   try {
     let leaderboardData: LeaderboardEntry[] = [];
     
@@ -321,7 +321,7 @@ export const getLeaderboard = async (groupId?: string, limit = 10): Promise<Lead
       leaderboardData = results.filter(entry => entry !== null) as LeaderboardEntry[];
     } else {
       const gamificationRef = collection(db, 'gamification');
-      const leaderQuery = query(gamificationRef, orderBy('points.total', 'desc'), limit(limit));
+      const leaderQuery = query(gamificationRef, orderBy('points.total', 'desc'), firestoreLimit(limitCount));
       const leaderSnapshot = await getDocs(leaderQuery);
       
       leaderboardData = leaderSnapshot.docs.map((doc, index) => {
