@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HelpCenter from "./pages/dashboard/HelpCenter";
@@ -32,6 +31,8 @@ import StudyGroupDetail from "./pages/dashboard/StudyGroupDetail";
 import StudyStatisticsPage from "./pages/dashboard/StudyStatistics";
 import StudyPromptGenerator from "./pages/dashboard/StudyPromptGenerator";
 import Gamification from "./pages/dashboard/Gamification";
+import JournalPage from "./pages/dashboard/JournalPage";
+import CapstoneProjects from "./pages/dashboard/CapstoneProjects";
 
 const App = () => {
   return (
@@ -79,6 +80,20 @@ const App = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <Gamification />
+            </DashboardLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/journal" element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <JournalPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/capstone" element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <CapstoneProjects />
             </DashboardLayout>
           </ProtectedRoute>
         } />

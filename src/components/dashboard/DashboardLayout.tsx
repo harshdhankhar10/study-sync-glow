@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -9,10 +10,10 @@ import {
 } from "@/components/ui/sheet";
 import { 
   Menu, Brain, Calendar, FileText, Star, Users, Settings, 
-  User, Book, BarChart2, LogOut, Target, Globe, Home, Award,
+  Book, BarChart2, LogOut, Target, Globe, Home, Award,
   Clock, MessageSquare, HelpCircle, ChevronDown, Plus, Search,
   Bell, ChevronRight, PieChart, BookOpen, Clipboard, CheckCircle, Layout, LineChart, 
-  LightbulbIcon, CheckSquare, Trophy
+  LightbulbIcon, CheckSquare, Trophy, User
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,6 +78,13 @@ const navigationItems: SidebarSectionType[] = [
         badge: "New",
         isFeatured: true,
       },
+      {
+        title: "Personal Growth Journal",
+        href: "/dashboard/journal",
+        icon: Book,
+        badge: "New",
+        isFeatured: true,
+      },
     ],
   },
   {
@@ -118,6 +126,13 @@ const navigationItems: SidebarSectionType[] = [
         href: "/dashboard/study-statistics",
         icon: BarChart2,
         badge: "New",
+      },
+      {
+        title: "Capstone Projects",
+        href: "/dashboard/capstone",
+        icon: Award,
+        badge: "New",
+        isFeatured: true,
       },
     ],
   },
