@@ -57,7 +57,7 @@ export function TaskForm({ initialData, onSubmit, isSubmitting }: TaskFormProps)
       status: initialData?.status || 'todo',
       tags: initialData?.tags?.join(', ') || '',
       relatedSubject: initialData?.relatedSubject || '',
-      estimatedTime: initialData?.estimatedTime?.toString() || '',
+      estimatedTime: initialData?.estimatedTime || undefined,
     },
   });
 
@@ -70,7 +70,7 @@ export function TaskForm({ initialData, onSubmit, isSubmitting }: TaskFormProps)
       status: values.status,
       tags: values.tags ? values.tags.split(',').map(tag => tag.trim()) : undefined,
       relatedSubject: values.relatedSubject,
-      estimatedTime: values.estimatedTime,
+      estimatedTime: values.estimatedTime !== undefined ? Number(values.estimatedTime) : undefined,
     };
     onSubmit(formData);
   };
