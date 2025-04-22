@@ -115,8 +115,8 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
               },
               loadScene: true,
               saveToActiveFile: true,
-              toggleTheme: true,
-              users: true
+              toggleTheme: true
+              // Removed the 'users' property since it's not valid
             }
           }}
         />
