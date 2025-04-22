@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   collection, 
@@ -10,9 +11,7 @@ import {
   getDoc, 
   addDoc, 
   updateDoc, 
-  serverTimestamp, 
-  Timestamp,
-  or 
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
@@ -23,7 +22,6 @@ import {
   CardHeader, 
   CardTitle 
 } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -32,24 +30,18 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Users, Plus, Book, MessageSquare, Sparkles } from 'lucide-react';
+import { Users, Plus, Sparkles } from 'lucide-react';
 import { StudyGroup } from '@/types/studyGroups';
 
-import GroupDashboard from '@/components/study-groups/GroupDashboard';
-import GroupResources from '@/components/study-groups/GroupResources';
-import GroupSummary from '@/components/study-groups/GroupSummary';
-import GroupChat from '@/components/study-groups/GroupChat';
 import GroupsList from '@/components/study-groups/GroupsList';
 
 export default function StudyGroups() {
   const { currentUser } = useAuth();
-  const { groupId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [myGroups, setMyGroups] = useState<StudyGroup[]>([]);
-  const [currentGroup, setCurrentGroup] = useState<StudyGroup | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -58,7 +50,6 @@ export default function StudyGroups() {
     purpose: '',
     isPublic: true
   });
-  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     async function loadUserGroups() {
@@ -124,74 +115,6 @@ export default function StudyGroups() {
         }
         
         setMyGroups(fetchedGroups);
-        
-        if (groupId) {
-          const group = fetchedGroups.find(g => g.id === groupId);
-          if (group) {
-            setCurrentGroup(group);
-          } else {
-            // If current group ID is provided but not found in user's groups,
-            // check if this group exists and the user has access to it
-            const groupDocRef = doc(db, 'studyGroups', groupId);
-            const groupDoc = await getDoc(groupDocRef);
-            
-            if (groupDoc.exists()) {
-              // Check if the user is a member of this group
-              // Using two separate queries instead of 'or' operator
-              const membershipByUserIdQuery = query(
-                membershipsRef,
-                where('groupId', '==', groupId),
-                where('userId', '==', currentUser.uid)
-              );
-              
-              const membershipByEmailQuery = query(
-                membershipsRef,
-                where('groupId', '==', groupId),
-                where('email', '==', currentUser.email)
-              );
-              
-              const [userIdMembership, emailMembership] = await Promise.all([
-                getDocs(membershipByUserIdQuery),
-                getDocs(membershipByEmailQuery)
-              ]);
-              
-              if (!userIdMembership.empty || !emailMembership.empty) {
-                // User is a member, add this group
-                const groupData = groupDoc.data();
-                const group = {
-                  id: groupDoc.id,
-                  name: groupData.name,
-                  description: groupData.description,
-                  subject: groupData.subject,
-                  purpose: groupData.purpose,
-                  createdAt: groupData.createdAt.toDate(),
-                  updatedAt: groupData.updatedAt?.toDate() || groupData.createdAt.toDate(),
-                  membersCount: groupData.membersCount || 0,
-                  ownerId: groupData.ownerId,
-                  isPublic: groupData.isPublic
-                };
-                
-                setMyGroups(prev => [...prev, group]);
-                setCurrentGroup(group);
-              } else {
-                // User doesn't have access to this group
-                navigate('/dashboard/study-groups');
-                toast({
-                  title: "Group not found",
-                  description: "The study group you're looking for doesn't exist or you don't have access to it.",
-                  variant: "destructive"
-                });
-              }
-            } else {
-              navigate('/dashboard/study-groups');
-              toast({
-                title: "Group not found",
-                description: "The study group you're looking for doesn't exist or you don't have access to it.",
-                variant: "destructive"
-              });
-            }
-          }
-        }
       } catch (error) {
         console.error("Error loading study groups:", error);
         toast({
@@ -205,7 +128,7 @@ export default function StudyGroups() {
     }
     
     loadUserGroups();
-  }, [currentUser, groupId, navigate, toast]);
+  }, [currentUser, toast]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -299,7 +222,6 @@ export default function StudyGroups() {
 
   const handleSelectGroup = (group: StudyGroup) => {
     navigate(`/dashboard/study-groups/${group.id}`);
-    setCurrentGroup(group);
   };
 
   return (
@@ -436,78 +358,26 @@ export default function StudyGroups() {
           <CardContent>
             <GroupsList 
               groups={myGroups} 
-              onSelectGroup={handleSelectGroup} 
-              currentGroupId={currentGroup?.id}
+              onSelectGroup={handleSelectGroup}
               loading={loading}
             />
           </CardContent>
         </Card>
 
         <div className="md:col-span-3">
-          {currentGroup ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{currentGroup.name}</CardTitle>
-                <CardDescription>
-                  {currentGroup.subject && `${currentGroup.subject} • `}
-                  {currentGroup.membersCount} {currentGroup.membersCount === 1 ? 'member' : 'members'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="dashboard" className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span className="hidden sm:inline">Dashboard</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="resources" className="flex items-center gap-2">
-                      <Book className="h-4 w-4" />
-                      <span className="hidden sm:inline">Resources</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="summary" className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      <span className="hidden sm:inline">AI Summary</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="chat" className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      <span className="hidden sm:inline">Group Chat</span>
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="dashboard">
-                    <GroupDashboard groupId={currentGroup.id} />
-                  </TabsContent>
-                  
-                  <TabsContent value="resources">
-                    <GroupResources groupId={currentGroup.id} />
-                  </TabsContent>
-                  
-                  <TabsContent value="summary">
-                    <GroupSummary groupId={currentGroup.id} />
-                  </TabsContent>
-                  
-                  <TabsContent value="chat">
-                    <GroupChat 
-                      groupId={currentGroup.id} 
-                      groupName={currentGroup.name} 
-                    />
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="h-full flex flex-col items-center justify-center p-8 text-center bg-muted/50">
-              <Users className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium mb-2">No Group Selected</h3>
-              <p className="text-muted-foreground mb-6 max-w-md">
-                Select a group from the list or create a new study group to get started with collaborative learning.
-              </p>
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Study Group
-              </Button>
-            </Card>
-          )}
+          <Card className="h-full flex flex-col items-center justify-center p-8 text-center bg-muted/50">
+            <Users className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-medium mb-2">Select a Study Group</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              {myGroups.length > 0 
+                ? "Select a group from the list to view details and interact with your study partners."
+                : "You haven't joined any study groups yet. Create your first group to get started with collaborative learning."}
+            </p>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Study Group
+            </Button>
+          </Card>
         </div>
       </div>
     </div>

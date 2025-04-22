@@ -1,3 +1,4 @@
+
 import HelpCenter from "./pages/dashboard/HelpCenter";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
@@ -25,6 +26,7 @@ import SkillMatchGrid from "./pages/dashboard/SkillMatchGrid";
 import AILearningHub from "./pages/dashboard/AILearningHub";
 import FlashcardsQuizzes from "./pages/dashboard/FlashcardsQuizzes";
 import Documentation from "./pages/Documentation";
+import StudyGroupDetail from "./pages/dashboard/StudyGroupDetail";
 
 const App = () => {
   return (
@@ -41,6 +43,7 @@ const App = () => {
         <Route path="/dashboard/notes" element={<ProtectedRoute><DashboardLayout><Notes /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/progress" element={<ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/study-groups" element={<ProtectedRoute><DashboardLayout><StudyGroups /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/study-groups/:groupId" element={<ProtectedRoute><DashboardLayout><StudyGroupDetail /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/ai-insights" element={<ProtectedRoute><DashboardLayout><AIInsights /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/ai-learning-hub" element={<ProtectedRoute><DashboardLayout><AILearningHub /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardLayout><Profile /></DashboardLayout></ProtectedRoute>} />
