@@ -115,7 +115,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
               },
               loadScene: true,
               saveToActiveFile: true,
-              theme: true,
+              toggleTheme: true,
               users: true
             }
           }}
