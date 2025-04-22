@@ -77,6 +77,13 @@ const navigationItems: SidebarSectionType[] = [
         badge: "New",
         isFeatured: true,
       },
+      {
+        title: "Personal Growth Journal",
+        href: "/dashboard/journal",
+        icon: Book,
+        badge: "New",
+        isFeatured: true,
+      },
     ],
   },
   {
