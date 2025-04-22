@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Quiz, QuizAnswer } from '@/types/quiz';
-import { CheckCircle2, XCircle, BarChart2, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, BarChart2, Loader2, Timer } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 interface QuizViewProps {
@@ -20,6 +20,7 @@ export function QuizView({ quiz, onComplete, showResults: externalShowResults }:
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [quizScore, setQuizScore] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,6 +28,23 @@ export function QuizView({ quiz, onComplete, showResults: externalShowResults }:
       setShowResults(externalShowResults);
     }
   }, [externalShowResults]);
+
+  // Update the timer every second
+  useEffect(() => {
+    if (!showResults) {
+      const timer = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [startTime, showResults]);
+
+  // Format time as mm:ss
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  };
 
   // Early return if quiz or quiz.questions is undefined or empty
   if (!quiz || !quiz.questions || quiz.questions.length === 0) {
@@ -222,7 +240,10 @@ export function QuizView({ quiz, onComplete, showResults: externalShowResults }:
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium">Question {currentQuestionIndex + 1} of {quiz.questions.length}</h3>
-          <span className="text-sm text-gray-500">{quiz.duration} min</span>
+          <div className="flex items-center text-orange-600">
+            <Timer className="w-5 h-5 mr-1" />
+            <span className="text-sm">{formatTime(elapsedTime)} / {quiz.duration} min</span>
+          </div>
         </div>
         <p className="text-xl mb-6">{currentQuestion.question}</p>
         <div className="space-y-3">

@@ -149,6 +149,8 @@ export function QuizPlatform({ onQuizCreated }: QuizPlatformProps) {
 
   const handleQuizComplete = async (score: number, timeSpent: number, answers: QuizAnswer[]) => {
     if (!currentUser || !quizzes[0]) return;
+    
+    // Only show results after completing the quiz
     setShowResults(true);
 
     try {

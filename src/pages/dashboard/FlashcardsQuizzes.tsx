@@ -10,12 +10,15 @@ import { Quiz } from '@/types/quiz';
 import { QuizView } from '@/components/ai-learning/QuizView';
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 export default function FlashcardsQuizzes() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('quiz-platform');
+  const [showResults, setShowResults] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (currentUser) {
@@ -45,14 +48,19 @@ export default function FlashcardsQuizzes() {
       setQuizzes(quizzesData);
     } catch (error) {
       console.error('Error loading quizzes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load quizzes. Please try again.',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleQuizComplete = (score: number, timeSpent: number, answers: any[]) => {
-    // We'll just log quiz completion in this page, but the QuizPlatform component
-    // handles saving results to Firebase
+    // Set showResults to true to display quiz results after completion
+    setShowResults(true);
     console.log('Quiz completed with score:', score);
     loadQuizzes(); // Refresh quizzes after completion
   };
@@ -92,6 +100,7 @@ export default function FlashcardsQuizzes() {
                 <QuizView
                   quiz={quizzes[0]}
                   onComplete={handleQuizComplete}
+                  showResults={showResults}
                 />
               ) : (
                 <div className="text-center p-8">

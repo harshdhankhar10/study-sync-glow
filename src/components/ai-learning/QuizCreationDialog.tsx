@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Quiz } from '@/types/quiz';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface QuizCreationDialogProps {
   onCreateQuiz: (topic: string, difficulty: Quiz['difficulty'], questionCount: number, timeLimit: number) => Promise<void>;
@@ -18,15 +19,26 @@ export function QuizCreationDialog({ onCreateQuiz }: QuizCreationDialogProps) {
   const [timeLimit, setTimeLimit] = useState(10);
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGenerating(true);
+    
     try {
       await onCreateQuiz(topic, difficulty, questionCount, timeLimit);
+      toast({
+        title: 'Success',
+        description: 'Quiz has been generated! Get ready to test your knowledge.',
+      });
       setOpen(false);
     } catch (error) {
       console.error('Error creating quiz:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate quiz. Please try again.',
+        variant: 'destructive'
+      });
     } finally {
       setIsGenerating(false);
     }
