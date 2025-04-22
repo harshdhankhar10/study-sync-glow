@@ -61,6 +61,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         backgroundColor: '#ffffff',
         selection: true,
         preserveObjectStacking: true,
+        isDrawingMode: activeTool === 'draw'
       });
       
       console.log("Canvas created:", canvas);
@@ -161,7 +162,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       });
       return () => {};
     }
-  }, [canvasRef, groupId, socket, currentUser, activeColor, brushSize, toast]);
+  }, [canvasRef, groupId, socket, currentUser, activeColor, brushSize, toast, activeTool]);
   
   // Set up socket listeners for collaboration
   useEffect(() => {
@@ -183,12 +184,13 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         
         // Add object to canvas based on type
         if (data.objectType === 'path' && data.path) {
-          // Use fabric.js utility to create objects from JSON
-          // Use a more direct approach to create paths from JSON
-          const path = new Path(data.path);
-          if (path) {
+          try {
+            // Create a new path from the JSON data
+            const path = new Path(data.path);
             canvas.add(path);
             canvas.renderAll();
+          } catch (err) {
+            console.error("Error creating path from JSON:", err);
           }
         } else if (data.objectType === 'rect') {
           const rect = new Rect({
@@ -282,7 +284,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
     canvas.isDrawingMode = activeTool === 'draw';
     
     // Configure the brush if it exists and drawing mode is active
-    if (canvas.isDrawingMode && canvas.freeDrawingBrush) {
+    if (canvas.freeDrawingBrush) {
       canvas.freeDrawingBrush.color = activeColor;
       canvas.freeDrawingBrush.width = brushSize;
     }
