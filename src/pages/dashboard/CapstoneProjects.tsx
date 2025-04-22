@@ -10,6 +10,7 @@ import { Award, Book, ChevronRight, Code, FileText } from "lucide-react";
 import CreateProjectDialog from '@/components/capstone/CreateProjectDialog';
 import ProjectTimeline from '@/components/capstone/ProjectTimeline';
 import ProjectOverview from '@/components/capstone/ProjectOverview';
+import ProjectDetails from '@/components/capstone/ProjectDetails';
 
 export interface CapstoneProject {
   id?: string;
@@ -36,6 +37,7 @@ export interface CapstoneProject {
 export default function CapstoneProjects() {
   const [projects, setProjects] = useState<CapstoneProject[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<CapstoneProject | null>(null);
   const { toast } = useToast();
   const currentUser = auth.currentUser;
 
@@ -141,7 +143,12 @@ export default function CapstoneProjects() {
                         </span>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" className="flex items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={() => setSelectedProject(project)}
+                    >
                       View Details
                       <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -158,6 +165,14 @@ export default function CapstoneProjects() {
         onOpenChange={setIsCreateDialogOpen}
         onProjectCreated={loadProjects}
       />
+
+      {selectedProject && (
+        <ProjectDetails
+          project={selectedProject}
+          open={!!selectedProject}
+          onOpenChange={(open) => !open && setSelectedProject(null)}
+        />
+      )}
     </div>
   );
 }
