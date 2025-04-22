@@ -1,65 +1,62 @@
+import HelpCenter from "./pages/dashboard/HelpCenter";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import DashboardLayout from "./components/dashboard/DashboardLayout";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Schedule from "./pages/dashboard/Schedule";
+import Availability from "./pages/dashboard/Availability";
+import Goals from "./pages/dashboard/Goals";
+import Skills from "./pages/dashboard/Skills";
+import Notes from "./pages/dashboard/Notes";
+import Progress from "./pages/dashboard/Progress";
+import StudyGroups from "./pages/dashboard/StudyGroups";
+import AIInsights from "./pages/dashboard/AIInsights";
+import Profile from "./pages/dashboard/Profile";
+import Settings from "./pages/dashboard/Settings";
+import GroupMatch from "./pages/dashboard/GroupMatch";
+import Streaks from "./pages/dashboard/Streaks";
+import StudyBuddy from "./pages/dashboard/StudyBuddy";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import MotivationCenter from "./pages/dashboard/MotivationCenter";
+import SkillMatchGrid from "./pages/dashboard/SkillMatchGrid";
+import AILearningHub from "./pages/dashboard/AILearningHub";
+import FlashcardsQuizzes from "./pages/dashboard/FlashcardsQuizzes";
+import Documentation from "./pages/Documentation";
 
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
-
-// Pages
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import NotFound from './pages/NotFound';
-import Documentation from './pages/Documentation';
-import Index from './pages/Index';
-
-// Dashboard Pages
-import DashboardRoutes from './pages/dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-
-// Community Forum Pages
-import CommunityForum from './pages/dashboard/CommunityForum';
-import CreateForumPost from './pages/dashboard/CreateForumPost';
-import ForumPostDetail from './pages/dashboard/ForumPostDetail';
-
-import './App.css';
-import { Toaster } from './components/ui/toaster';
-
-function App() {
-  const { currentUser, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
-
+const App = () => {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/schedule" element={<ProtectedRoute><DashboardLayout><Schedule /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/availability" element={<ProtectedRoute><DashboardLayout><Availability /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/goals" element={<ProtectedRoute><DashboardLayout><Goals /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/skills" element={<ProtectedRoute><DashboardLayout><Skills /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/notes" element={<ProtectedRoute><DashboardLayout><Notes /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/progress" element={<ProtectedRoute><DashboardLayout><Progress /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/study-groups" element={<ProtectedRoute><DashboardLayout><StudyGroups /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/ai-insights" element={<ProtectedRoute><DashboardLayout><AIInsights /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/ai-learning-hub" element={<ProtectedRoute><DashboardLayout><AILearningHub /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardLayout><Profile /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/group-match" element={<ProtectedRoute><DashboardLayout><GroupMatch /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/help" element={<ProtectedRoute><DashboardLayout><HelpCenter /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/streaks" element={<ProtectedRoute><DashboardLayout><Streaks /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/study-buddy" element={<ProtectedRoute><DashboardLayout><StudyBuddy /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/motivation" element={<ProtectedRoute><DashboardLayout><MotivationCenter /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/skillmatch-grid" element={<ProtectedRoute><DashboardLayout><SkillMatchGrid /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/flashcards-quizzes" element={<ProtectedRoute><DashboardLayout><FlashcardsQuizzes /></DashboardLayout></ProtectedRoute>} />
         <Route path="/documentation" element={<Documentation />} />
-
-        {/* Dashboard Routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Outlet />
-          </ProtectedRoute>
-        }>
-          <Route path="" element={<DashboardRoutes />}>
-            {/* Community Forum Routes */}
-            <Route path="community-forum" element={<CommunityForum />} />
-            <Route path="community-forum/create-post" element={<CreateForumPost />} />
-            <Route path="community-forum/post/:postId" element={<ForumPostDetail />} />
-          </Route>
-        </Route>
-
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <Toaster />
     </Router>
   );
-}
+};
 
 export default App;

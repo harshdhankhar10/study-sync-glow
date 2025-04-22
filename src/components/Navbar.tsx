@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 
@@ -34,18 +33,15 @@ export const Navbar = () => {
               <a href="#pricing" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
                 Pricing
               </a>
-              <a href="/dashboard/community-forum" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
-                Community
-              </a>
             </div>
           </div>
           
           <div className="hidden md:block">
             <div className="flex items-center space-x-4">
-              <a href="/login" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+              <a href="#" className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
                 Login
               </a>
-              <a href="/signup" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-500 rounded-md hover:from-indigo-700 hover:to-purple-600 transition-colors">
+              <a href="#" className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-500 rounded-md hover:from-indigo-700 hover:to-purple-600 transition-colors">
                 Sign Up
               </a>
             </div>
@@ -81,14 +77,11 @@ export const Navbar = () => {
             <a href="#pricing" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
               Pricing
             </a>
-            <a href="/dashboard/community-forum" className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
-              Community
-            </a>
             <div className="pt-4 border-t border-gray-200 flex flex-col space-y-3">
-              <a href="/login" className="px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+              <a href="#" className="px-3 py-2 text-base font-medium text-gray-700 hover:text-indigo-600 transition-colors">
                 Login
               </a>
-              <a href="/signup" className="mx-3 py-2 text-center font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-500 rounded-md hover:from-indigo-700 hover:to-purple-600 transition-colors">
+              <a href="#" className="mx-3 py-2 text-center font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-500 rounded-md hover:from-indigo-700 hover:to-purple-600 transition-colors">
                 Sign Up
               </a>
             </div>
