@@ -1,3 +1,4 @@
+
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { GEMINI_API_KEY, GEMINI_ENDPOINT } from './ai';
@@ -119,10 +120,11 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
                 4. Has measurable learning objectives
                 5. Gradually builds complexity
                 
-                Return ONLY a valid JSON object with this exact structure without any additional text or markdown:
+                CRITICAL INSTRUCTIONS: Return ONLY a valid JSON object with this exact structure. Do NOT include any markdown formatting, explanation text, or codeblocks around the JSON. The response must start with { and end with } and be properly formatted JSON:
+
                 {
                   "overallDescription": "Brief description of the entire study plan",
-                  "keyLearningPoints": ["Key point 1", "Key point 2", ...],
+                  "keyLearningPoints": ["Key point 1", "Key point 2"],
                   "days": [
                     {
                       "day": 1,
@@ -150,19 +152,28 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
                   ]
                 }
                 
+                IMPORTANT JSON FORMATTING RULES:
+                - Use double quotes for all keys and string values
+                - Do NOT use trailing commas after the last item in arrays or objects
+                - Ensure all arrays and objects are properly closed
+                - Make sure all string values are properly escaped
+                - Each "day" object must have all the required fields (day, date, title, description, tasks, estimatedTimeMinutes, resources)
+                - Each "task" must have all the required fields (id, description, estimatedTimeMinutes, completed)
+                - Each "resource" must have all the required fields (title, type, description) and url when available
+                
                 Ensure:
                 - Each day's total estimated time is approximately ${input.dailyTime} minutes
                 - The plan spans ${diffDays} days maximum
                 - Resources are relevant and varied according to the preferred formats: ${input.preferredFormat.join(', ')}
                 - Tasks are specific and actionable
                 - IDs for tasks are truly unique strings
-                - Make sure to use proper JSON syntax with no trailing commas or invalid characters`
+                - Type for resources must be one of: "video", "article", "book", "exercise", or "other"`
               }
             ]
           }
         ],
         generationConfig: {
-          temperature: 0.2,
+          temperature: 0.1,
           maxOutputTokens: 2048,
         }
       }),
@@ -180,60 +191,165 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
     // Log the raw response for debugging
     console.log("Raw AI response:", jsonText);
     
-    // Clean up the JSON text by removing any potential markdown formatting or additional text
-    let cleanJsonText = jsonText;
+    // Advanced JSON extraction and cleaning
+    let cleanJsonText = '';
     
-    // Find JSON content (between curly braces)
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Could not extract valid JSON from AI response");
-    }
-    
-    cleanJsonText = jsonMatch[0];
-    
-    // Additional cleanup to ensure valid JSON
-    // Remove trailing commas which are common AI mistakes
-    cleanJsonText = cleanJsonText.replace(/,(\s*[\]}])/g, '$1');
-    
-    // Ensure we have a parseable JSON
-    let planData;
     try {
-      planData = JSON.parse(cleanJsonText);
-    } catch (parseError) {
+      // First attempt: Simple extraction
+      if (jsonText.trim().startsWith('{') && jsonText.trim().endsWith('}')) {
+        cleanJsonText = jsonText.trim();
+      } else {
+        // Second attempt: Find the JSON using regex
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanJsonText = jsonMatch[0];
+        } else {
+          throw new Error("Could not extract valid JSON from AI response");
+        }
+      }
+      
+      // Clean up common JSON issues
+      // Remove trailing commas which are common AI mistakes
+      cleanJsonText = cleanJsonText.replace(/,(\s*[\]}])/g, '$1');
+      
+      // Replace any invalid control characters
+      cleanJsonText = cleanJsonText.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      
+      // Extra safety: ensure proper JSON structure
+      cleanJsonText = cleanJsonText
+        .replace(/\][\s\n]*\}/g, ']}') // Fix array closing at the end of object
+        .replace(/\}[\s\n]*\]/g, ']}') // Fix object closing at the end of array
+        .replace(/\}\s*\{/g, '},{'); // Fix adjacent objects
+      
+      console.log("Cleaned JSON:", cleanJsonText);
+      
+      // Parse the JSON
+      const planData = JSON.parse(cleanJsonText);
+      
+      // Validate required properties
+      if (!planData.overallDescription || !Array.isArray(planData.keyLearningPoints) || !Array.isArray(planData.days)) {
+        throw new Error("AI response missing required properties");
+      }
+      
+      // Deep validation for potential issues
+      for (const day of planData.days) {
+        if (!day.day || !day.date || !day.title || !day.description || 
+            !Array.isArray(day.tasks) || !day.estimatedTimeMinutes || !Array.isArray(day.resources)) {
+          throw new Error(`Invalid day structure in AI response: ${JSON.stringify(day)}`);
+        }
+        
+        for (const task of day.tasks) {
+          if (!task.id || !task.description || typeof task.estimatedTimeMinutes !== 'number' || 
+              typeof task.completed !== 'boolean') {
+            throw new Error(`Invalid task structure in AI response: ${JSON.stringify(task)}`);
+          }
+        }
+        
+        for (const resource of day.resources) {
+          if (!resource.title || !resource.type || !resource.description) {
+            throw new Error(`Invalid resource structure in AI response: ${JSON.stringify(resource)}`);
+          }
+        }
+      }
+      
+      // Create the study plan object
+      const studyPlan: StudyPlan = {
+        userId: input.userId,
+        topic: input.topic,
+        dailyTime: input.dailyTime,
+        deadline: deadline,
+        preferredFormat: input.preferredFormat,
+        additionalNotes: input.additionalNotes,
+        createdAt: new Date(),
+        overallDescription: planData.overallDescription,
+        keyLearningPoints: planData.keyLearningPoints,
+        days: planData.days,
+        completed: false,
+        progress: 0
+      };
+      
+      // Save to Firestore
+      const docRef = await addDoc(collection(db, 'studyPlans'), studyPlan);
+      
+      // Return the plan with the ID
+      return {
+        ...studyPlan,
+        id: docRef.id,
+      };
+      
+    } catch (parseError: any) {
       console.error("JSON parse error:", parseError);
+      
+      // If we still have issues, try a more aggressive approach to fix the JSON
+      try {
+        // Last resort: Manual fixing of common JSON errors
+        // This is very aggressive but might work in desperate cases
+        if (parseError.message.includes("position")) {
+          const posMatch = parseError.message.match(/position (\d+)/);
+          if (posMatch && posMatch[1]) {
+            const errorPos = parseInt(posMatch[1]);
+            
+            // Get the problematic area (20 chars before and after)
+            const startPos = Math.max(0, errorPos - 20);
+            const endPos = Math.min(jsonText.length, errorPos + 20);
+            const problematicArea = jsonText.substring(startPos, endPos);
+            
+            console.error(`JSON parse error near: "${problematicArea}"`);
+            
+            // Try to identify and fix common issues
+            // For example, if error is about missing comma, we might try to insert it
+            // Or if it's about unexpected comma, we might try to remove it
+            
+            // Create a more sanitized version by replacing problematic characters
+            const sanitizedJsonText = jsonText
+              .replace(/'/g, '"')  // Replace single quotes with double quotes
+              .replace(/,\s*[\]}]/g, '$1') // Remove trailing commas
+              .replace(/\\/g, '\\\\') // Escape backslashes
+              .replace(/\n/g, ' ') // Replace newlines with spaces
+              .replace(/"\s*\}/g, '"}') // Fix spacing issues
+              .replace(/\}\s*"/g, '},"'); // Fix missing commas between objects
+            
+            console.log("Last resort sanitized JSON:", sanitizedJsonText);
+            
+            // Extract JSON using a more flexible approach
+            const flexibleJsonMatch = sanitizedJsonText.match(/\{[\s\S]*\}/);
+            if (flexibleJsonMatch) {
+              const planData = JSON.parse(flexibleJsonMatch[0]);
+              
+              // Create a basic valid study plan structure
+              const studyPlan: StudyPlan = {
+                userId: input.userId,
+                topic: input.topic,
+                dailyTime: input.dailyTime,
+                deadline: deadline,
+                preferredFormat: input.preferredFormat,
+                additionalNotes: input.additionalNotes,
+                createdAt: new Date(),
+                overallDescription: planData.overallDescription || "Study plan for " + input.topic,
+                keyLearningPoints: Array.isArray(planData.keyLearningPoints) ? planData.keyLearningPoints : [],
+                days: Array.isArray(planData.days) ? planData.days : [],
+                completed: false,
+                progress: 0
+              };
+              
+              // Save to Firestore
+              const docRef = await addDoc(collection(db, 'studyPlans'), studyPlan);
+              
+              // Return the plan with the ID
+              return {
+                ...studyPlan,
+                id: docRef.id,
+              };
+            }
+          }
+        }
+      } catch (lastResortError) {
+        console.error("Failed even with last resort parsing:", lastResortError);
+      }
+      
+      // If all else fails, throw a clear error
       throw new Error(`Failed to parse AI response: ${parseError.message}`);
     }
-    
-    // Validate required properties
-    if (!planData.overallDescription || !Array.isArray(planData.keyLearningPoints) || !Array.isArray(planData.days)) {
-      throw new Error("AI response missing required properties");
-    }
-    
-    // Create the study plan object
-    const studyPlan: StudyPlan = {
-      userId: input.userId,
-      topic: input.topic,
-      dailyTime: input.dailyTime,
-      deadline: deadline,
-      preferredFormat: input.preferredFormat,
-      additionalNotes: input.additionalNotes,
-      createdAt: new Date(),
-      overallDescription: planData.overallDescription,
-      keyLearningPoints: planData.keyLearningPoints,
-      days: planData.days,
-      completed: false,
-      progress: 0
-    };
-    
-    // Save to Firestore
-    const docRef = await addDoc(collection(db, 'studyPlans'), studyPlan);
-    
-    // Return the plan with the ID
-    return {
-      ...studyPlan,
-      id: docRef.id,
-    };
-    
   } catch (error: any) {
     console.error("Error generating study plan:", error);
     throw new Error(`Failed to generate study plan: ${error.message}`);
