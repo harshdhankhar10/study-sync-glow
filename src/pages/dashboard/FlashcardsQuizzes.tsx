@@ -39,13 +39,41 @@ export default function FlashcardsQuizzes() {
         limit(1)
       );
       const quizzesSnap = await getDocs(quizzesQuery);
-      const quizzesData = quizzesSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-      })) as Quiz[];
+      const quizzesData = quizzesSnap.docs.map(doc => {
+        const data = doc.data();
+        // Ensure questions array exists and has the correct format
+        const questions = Array.isArray(data.questions) 
+          ? data.questions.map(q => ({
+              ...q,
+              options: Array.isArray(q.options) ? q.options : [],
+            })) 
+          : [];
+          
+        return {
+          id: doc.id,
+          ...data,
+          questions,
+          createdAt: data.createdAt?.toDate(),
+        };
+      }) as Quiz[];
 
-      setQuizzes(quizzesData);
+      // Validate quiz data before setting state
+      const validQuizzes = quizzesData.filter(quiz => 
+        quiz && quiz.questions && Array.isArray(quiz.questions) && 
+        quiz.questions.length > 0 && 
+        quiz.questions.every(q => q && q.options && Array.isArray(q.options))
+      );
+
+      setQuizzes(validQuizzes);
+      
+      if (validQuizzes.length === 0 && quizzesData.length > 0) {
+        // We had quizzes but they were invalid
+        toast({
+          title: 'Warning',
+          description: 'Some quizzes had invalid data and were filtered out.',
+          variant: 'destructive'
+        });
+      }
     } catch (error) {
       console.error('Error loading quizzes:', error);
       toast({

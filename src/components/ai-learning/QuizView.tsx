@@ -46,11 +46,28 @@ export function QuizView({ quiz, onComplete, showResults: externalShowResults }:
     return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
 
+  // Check if quiz data is valid
+  const isQuizValid = (): boolean => {
+    if (!quiz || !Array.isArray(quiz.questions) || quiz.questions.length === 0) {
+      return false;
+    }
+    
+    // Check each question has all required fields
+    return quiz.questions.every(q => 
+      q && 
+      q.id && 
+      q.question && 
+      Array.isArray(q.options) && 
+      q.options.length > 0 &&
+      q.correctAnswer
+    );
+  };
+
   // Early return if quiz or quiz.questions is undefined or empty
-  if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+  if (!isQuizValid()) {
     return (
       <Card className="p-6">
-        <p className="text-center text-gray-500">No quiz questions available.</p>
+        <p className="text-center text-gray-500">No quiz questions available or quiz data is invalid.</p>
       </Card>
     );
   }
@@ -58,6 +75,15 @@ export function QuizView({ quiz, onComplete, showResults: externalShowResults }:
   // Ensure we have a valid currentQuestion
   const currentQuestion = quiz.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
+
+  // If current question is somehow invalid, show an error
+  if (!currentQuestion || !Array.isArray(currentQuestion.options) || currentQuestion.options.length === 0) {
+    return (
+      <Card className="p-6">
+        <p className="text-center text-gray-500">Quiz question data is invalid. Please try generating a new quiz.</p>
+      </Card>
+    );
+  }
 
   const handleSelectAnswer = (answer: string) => {
     if (!currentQuestion) return; // Safety check
@@ -222,15 +248,6 @@ export function QuizView({ quiz, onComplete, showResults: externalShowResults }:
             </div>
           </div>
         </div>
-      </Card>
-    );
-  }
-
-  // Safety check to ensure current question exists
-  if (!currentQuestion || !currentQuestion.options) {
-    return (
-      <Card className="p-6">
-        <p className="text-center text-gray-500">Quiz question data is invalid.</p>
       </Card>
     );
   }
