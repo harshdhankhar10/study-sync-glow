@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -12,7 +13,7 @@ import {
   Book, BarChart2, LogOut, Target, Globe, Home, Award,
   Clock, MessageSquare, HelpCircle, ChevronDown, Plus, Search,
   Bell, ChevronRight, PieChart, BookOpen, Clipboard, CheckCircle, Layout, LineChart, 
-  LightbulbIcon, CheckSquare, Trophy
+  LightbulbIcon, CheckSquare, Trophy, User
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
