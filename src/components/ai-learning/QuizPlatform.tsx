@@ -4,7 +4,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { Quiz, QuizAnalytics, QuizAnswer, QuizAttempt } from '@/types/quiz';
 import { generateQuiz, generateQuizAnalytics } from '@/lib/quiz-generator';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Brain, Clock, Target, Trophy, BarChart2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { QuizView } from './QuizView';
@@ -60,9 +60,14 @@ export function QuizPlatform() {
       const attemptsData = attemptsSnap.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
+        quizId: doc.data().quizId,
+        userId: doc.data().userId,
+        score: doc.data().score,
+        answers: doc.data().answers,
+        timeSpent: doc.data().timeSpent,
         startedAt: doc.data().startedAt?.toDate(),
         completedAt: doc.data().completedAt?.toDate(),
-      }));
+      })) as QuizAttempt[];
 
       const quizAnalytics = await generateQuizAnalytics(attemptsData);
       setAnalytics(quizAnalytics);
