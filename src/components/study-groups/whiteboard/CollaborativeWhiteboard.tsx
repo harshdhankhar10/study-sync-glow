@@ -110,7 +110,9 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
             canvasActions: {
               saveAsImage: true,
               changeViewBackgroundColor: true,
-              export: true,
+              export: {
+                saveFileToDisk: true
+              },
               loadScene: true,
               saveToActiveFile: true,
               theme: true,
