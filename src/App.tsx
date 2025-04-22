@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HelpCenter from "./pages/dashboard/HelpCenter";
@@ -28,6 +29,7 @@ import FlashcardsQuizzes from "./pages/dashboard/FlashcardsQuizzes";
 import Documentation from "./pages/Documentation";
 import StudyGroupDetail from "./pages/dashboard/StudyGroupDetail";
 import StudyStatisticsPage from "./pages/dashboard/StudyStatistics";
+import StudyPromptGenerator from "./pages/dashboard/StudyPromptGenerator";
 
 const App = () => {
   return (
@@ -60,6 +62,13 @@ const App = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <StudyStatisticsPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/study-prompt-generator" element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <StudyPromptGenerator />
             </DashboardLayout>
           </ProtectedRoute>
         } />

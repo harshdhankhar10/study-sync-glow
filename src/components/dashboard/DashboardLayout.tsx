@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -12,6 +13,7 @@ import {
   User, Book, BarChart2, LogOut, Target, Globe, Home, Award,
   Clock, MessageSquare, HelpCircle, ChevronDown, Plus, Search,
   Bell, ChevronRight, PieChart, BookOpen, Clipboard, CheckCircle, Layout, LineChart, 
+  LightbulbIcon
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -79,6 +81,13 @@ const navigationItems: SidebarSectionType[] = [
         title: "Study Buddy",
         href: "/dashboard/study-buddy",
         icon: Book,
+      },
+      {
+        title: "Study Prompt Generator",
+        href: "/dashboard/study-prompt-generator",
+        icon: BookOpen,
+        badge: "New",
+        isFeatured: true,
       },
       {
         title: "SkillMatch Grid",
