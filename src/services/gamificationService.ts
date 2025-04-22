@@ -1,4 +1,3 @@
-
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, Timestamp, increment, arrayUnion } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { StreakData } from './streakService';
@@ -144,17 +143,12 @@ const DEFAULT_BADGES: Badge[] = [
   }
 ];
 
-// Calculate level based on total points
 const calculateLevel = (points: number): { level: number, nextLevelPoints: number } => {
-  // Simple level calculation: level = 1 + floor(points / 100)
-  // Each level requires 100 more points than the previous
   const level = Math.floor(points / 100) + 1;
   const nextLevelPoints = level * 100;
-  
   return { level, nextLevelPoints };
 };
 
-// Initialize or get a user's gamification profile
 export const getGamificationProfile = async (userId: string): Promise<GamificationProfile> => {
   if (!userId) {
     throw new Error('User ID is required to get gamification profile');
@@ -167,12 +161,10 @@ export const getGamificationProfile = async (userId: string): Promise<Gamificati
     if (profileDoc.exists()) {
       return profileDoc.data() as GamificationProfile;
     } else {
-      // Get user display name from auth profile
       const userRef = doc(db, 'profiles', userId);
       const userDoc = await getDoc(userRef);
       const userData = userDoc.exists() ? userDoc.data() : null;
       
-      // Initialize new profile
       const initialPoints: UserPoints = {
         total: 0,
         sessionAttendance: 0,
@@ -205,7 +197,6 @@ export const getGamificationProfile = async (userId: string): Promise<Gamificati
   }
 };
 
-// Award points to a user
 export const awardPoints = async (
   userId: string, 
   category: keyof UserPoints, 
@@ -220,20 +211,16 @@ export const awardPoints = async (
     const profileRef = doc(db, 'gamification', userId);
     const profile = await getGamificationProfile(userId);
     
-    // Update points
     const updatedPoints = {
       ...profile.points,
       [category]: profile.points[category] + amount,
       total: profile.points.total + amount
     };
     
-    // Calculate new level
     const { level, nextLevelPoints } = calculateLevel(updatedPoints.total);
     
-    // Check for level up
     const leveledUp = level > profile.level;
     
-    // Update profile
     const updatedProfile: GamificationProfile = {
       ...profile,
       points: updatedPoints,
@@ -249,10 +236,8 @@ export const awardPoints = async (
       lastUpdated: Timestamp.now()
     });
     
-    // Log activity
     await logPointActivity(userId, category, amount, reason);
     
-    // Handle level up notification if needed
     if (leveledUp) {
       await logLevelUpActivity(userId, level);
     }
@@ -264,7 +249,6 @@ export const awardPoints = async (
   }
 };
 
-// Award a badge to a user
 export const awardBadge = async (userId: string, badgeId: string): Promise<Badge | null> => {
   if (!userId || !badgeId) {
     throw new Error('User ID and badge ID are required to award a badge');
@@ -279,29 +263,24 @@ export const awardBadge = async (userId: string, badgeId: string): Promise<Badge
       return null;
     }
     
-    // Check if badge is already earned
     if (profile.badges[badgeIndex].earnedAt) {
       return profile.badges[badgeIndex];
     }
     
-    // Award the badge
     const updatedBadge = {
       ...profile.badges[badgeIndex],
       earnedAt: Timestamp.now()
     };
     
-    // Update in the array
     const updatedBadges = [...profile.badges];
     updatedBadges[badgeIndex] = updatedBadge;
     
-    // Update in Firestore
     const profileRef = doc(db, 'gamification', userId);
     await updateDoc(profileRef, {
       badges: updatedBadges,
       lastUpdated: Timestamp.now()
     });
     
-    // Log activity
     await logBadgeActivity(userId, updatedBadge);
     
     return updatedBadge;
@@ -311,20 +290,17 @@ export const awardBadge = async (userId: string, badgeId: string): Promise<Badge
   }
 };
 
-// Get leaderboard data (global or for a specific group)
 export const getLeaderboard = async (groupId?: string, limit = 10): Promise<LeaderboardEntry[]> => {
   try {
     let leaderboardData: LeaderboardEntry[] = [];
     
     if (groupId) {
-      // Get group members
       const membershipsRef = collection(db, 'groupMemberships');
       const memberQuery = query(membershipsRef, where('groupId', '==', groupId));
       const memberSnapshot = await getDocs(memberQuery);
       
       const memberIds = memberSnapshot.docs.map(doc => doc.data().userId).filter(id => !!id);
       
-      // Get gamification data for each member
       const gamificationPromises = memberIds.map(async (userId) => {
         try {
           const profile = await getGamificationProfile(userId);
@@ -344,7 +320,6 @@ export const getLeaderboard = async (groupId?: string, limit = 10): Promise<Lead
       const results = await Promise.all(gamificationPromises);
       leaderboardData = results.filter(entry => entry !== null) as LeaderboardEntry[];
     } else {
-      // Global leaderboard
       const gamificationRef = collection(db, 'gamification');
       const leaderQuery = query(gamificationRef, orderBy('points.total', 'desc'), limit(limit));
       const leaderSnapshot = await getDocs(leaderQuery);
@@ -362,10 +337,8 @@ export const getLeaderboard = async (groupId?: string, limit = 10): Promise<Lead
       });
     }
     
-    // Sort by points (highest first)
     leaderboardData.sort((a, b) => b.points - a.points);
     
-    // Assign ranks
     leaderboardData.forEach((entry, index) => {
       entry.rank = index + 1;
     });
@@ -377,7 +350,6 @@ export const getLeaderboard = async (groupId?: string, limit = 10): Promise<Lead
   }
 };
 
-// Log point activity
 const logPointActivity = async (
   userId: string, 
   category: keyof UserPoints, 
@@ -399,7 +371,6 @@ const logPointActivity = async (
   }
 };
 
-// Log badge activity
 const logBadgeActivity = async (userId: string, badge: Badge) => {
   try {
     const activityRef = collection(db, 'activity');
@@ -418,7 +389,6 @@ const logBadgeActivity = async (userId: string, badge: Badge) => {
   }
 };
 
-// Log level up activity
 const logLevelUpActivity = async (userId: string, newLevel: number) => {
   try {
     const activityRef = collection(db, 'activity');
@@ -435,20 +405,16 @@ const logLevelUpActivity = async (userId: string, newLevel: number) => {
   }
 };
 
-// Check and award streak-based badges based on current streak
 export const checkAndAwardStreakBadges = async (userId: string, streakData: StreakData) => {
   try {
-    // Get current streak
     const currentStreak = streakData.currentStreak;
     
-    // Define streak badges to check
     const streakBadges = [
       { id: 'streak-3day', requirement: 3 },
       { id: 'streak-7day', requirement: 7 },
       { id: 'streak-30day', requirement: 30 }
     ];
     
-    // Award points for streak maintenance
     await awardPoints(
       userId, 
       'streakMaintenance', 
@@ -456,7 +422,6 @@ export const checkAndAwardStreakBadges = async (userId: string, streakData: Stre
       `Maintained a ${currentStreak}-day study streak`
     );
     
-    // Check each badge
     for (const badge of streakBadges) {
       if (currentStreak >= badge.requirement) {
         await awardBadge(userId, badge.id);
@@ -467,12 +432,9 @@ export const checkAndAwardStreakBadges = async (userId: string, streakData: Stre
   }
 };
 
-// Award points for session attendance
 export const awardSessionPoints = async (userId: string, sessionLength: number) => {
   try {
-    // Award points based on session length (in minutes)
-    const points = Math.min(Math.floor(sessionLength / 15) * 5, 30); // Max 30 points per session
-    
+    const points = Math.min(Math.floor(sessionLength / 15) * 5, 30);
     const updated = await awardPoints(
       userId,
       'sessionAttendance',
@@ -480,17 +442,14 @@ export const awardSessionPoints = async (userId: string, sessionLength: number) 
       `Attended a ${sessionLength} minute study session`
     );
     
-    // Check for session attendance badges
     const sessionCounts = {
       1: 'session-starter',
       5: 'session-regular',
       20: 'session-expert'
     };
     
-    // Count total sessions (roughly estimated by points / average points per session)
     const estimatedSessions = Math.floor(updated.points.sessionAttendance / 15);
     
-    // Check each threshold
     Object.entries(sessionCounts).forEach(([count, badgeId]) => {
       if (estimatedSessions >= parseInt(count)) {
         awardBadge(userId, badgeId).catch(console.error);
@@ -504,10 +463,8 @@ export const awardSessionPoints = async (userId: string, sessionLength: number) 
   }
 };
 
-// Award points for goal completion
 export const awardGoalCompletionPoints = async (userId: string, goalDifficulty: 'easy' | 'medium' | 'hard' = 'medium') => {
   try {
-    // Points based on difficulty
     const pointsMap = {
       'easy': 10,
       'medium': 20,
@@ -523,16 +480,13 @@ export const awardGoalCompletionPoints = async (userId: string, goalDifficulty: 
       `Completed a ${goalDifficulty} study goal`
     );
     
-    // Check for goal completion badges
     const goalCounts = {
       1: 'goal-starter',
       5: 'goal-achiever'
     };
     
-    // Estimate completed goals based on average points per goal
     const estimatedGoals = Math.floor(updated.points.goalCompletion / 20);
     
-    // Check each threshold
     Object.entries(goalCounts).forEach(([count, badgeId]) => {
       if (estimatedGoals >= parseInt(count)) {
         awardBadge(userId, badgeId).catch(console.error);
@@ -546,10 +500,8 @@ export const awardGoalCompletionPoints = async (userId: string, goalDifficulty: 
   }
 };
 
-// Award points for helping peers
 export const awardHelpingPeersPoints = async (userId: string, helpType: 'question' | 'resource' | 'explanation' = 'question') => {
   try {
-    // Points based on help type
     const pointsMap = {
       'question': 5,
       'resource': 10,
@@ -565,16 +517,13 @@ export const awardHelpingPeersPoints = async (userId: string, helpType: 'questio
       `Helped a peer with a ${helpType}`
     );
     
-    // Check for helping badges
     const helpingCounts = {
       1: 'helping-hand',
       10: 'community-pillar'
     };
     
-    // Estimate help instances based on average points per help
     const estimatedHelps = Math.floor(updated.points.helpingPeers / 10);
     
-    // Check each threshold
     Object.entries(helpingCounts).forEach(([count, badgeId]) => {
       if (estimatedHelps >= parseInt(count)) {
         awardBadge(userId, badgeId).catch(console.error);
@@ -588,7 +537,6 @@ export const awardHelpingPeersPoints = async (userId: string, helpType: 'questio
   }
 };
 
-// Get user's earned badges
 export const getEarnedBadges = async (userId: string): Promise<Badge[]> => {
   try {
     const profile = await getGamificationProfile(userId);
