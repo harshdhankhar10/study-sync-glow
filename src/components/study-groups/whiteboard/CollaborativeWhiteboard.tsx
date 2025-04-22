@@ -43,69 +43,82 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   useEffect(() => {
     if (!canvasRef.current || canvas) return;
     
-    const fabricCanvas = new Canvas(canvasRef.current, {
-      width: canvasRef.current.offsetWidth,
-      height: 500,
-      backgroundColor: '#ffffff',
-      selection: true,
-      preserveObjectStacking: true,
-      isDrawingMode: false,
-    });
-    
-    // Set up basic drawing brush
-    fabricCanvas.freeDrawingBrush.color = activeColor;
-    fabricCanvas.freeDrawingBrush.width = brushSize;
-    
-    setCanvas(fabricCanvas);
-    
-    // Emit join event
-    if (socket && currentUser) {
-      socket.emit('whiteboard-join', {
-        groupId,
-        userId: currentUser.uid,
-        userName: currentUser.displayName || currentUser.email
+    try {
+      const fabricCanvas = new Canvas(canvasRef.current, {
+        width: canvasRef.current.offsetWidth,
+        height: 500,
+        backgroundColor: '#ffffff',
+        selection: true,
+        preserveObjectStacking: true,
+        isDrawingMode: false,
       });
       
-      // Save whiteboard session to Firestore
-      const whiteboardSessionRef = doc(collection(db, 'whiteboardSessions'), `${groupId}-${Date.now()}`);
-      setDoc(whiteboardSessionRef, {
-        groupId,
-        createdAt: Timestamp.now(),
-        participants: [{
-          userId: currentUser.uid,
-          name: currentUser.displayName || currentUser.email,
-          joinedAt: Timestamp.now()
-        }],
-        objects: [],
-      }).catch(err => console.error("Error saving whiteboard session:", err));
-    }
-    
-    // Handle window resize
-    const handleResize = () => {
-      if (canvasRef.current && fabricCanvas) {
-        fabricCanvas.setDimensions({
-          width: canvasRef.current.offsetWidth,
-          height: 500
-        });
-        fabricCanvas.renderAll();
+      // Make sure the canvas is fully initialized before setting brush properties
+      if (fabricCanvas && fabricCanvas.freeDrawingBrush) {
+        fabricCanvas.freeDrawingBrush.color = activeColor;
+        fabricCanvas.freeDrawingBrush.width = brushSize;
       }
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    return () => {
-      fabricCanvas.dispose();
-      window.removeEventListener('resize', handleResize);
       
-      // Emit leave event
+      setCanvas(fabricCanvas);
+      
+      // Emit join event
       if (socket && currentUser) {
-        socket.emit('whiteboard-leave', {
+        socket.emit('whiteboard-join', {
           groupId,
-          userId: currentUser.uid
+          userId: currentUser.uid,
+          userName: currentUser.displayName || currentUser.email
         });
+        
+        // Save whiteboard session to Firestore
+        const whiteboardSessionRef = doc(collection(db, 'whiteboardSessions'), `${groupId}-${Date.now()}`);
+        setDoc(whiteboardSessionRef, {
+          groupId,
+          createdAt: Timestamp.now(),
+          participants: [{
+            userId: currentUser.uid,
+            name: currentUser.displayName || currentUser.email,
+            joinedAt: Timestamp.now()
+          }],
+          objects: [],
+        }).catch(err => console.error("Error saving whiteboard session:", err));
       }
-    };
-  }, [canvasRef, groupId, socket, currentUser]);
+      
+      // Handle window resize
+      const handleResize = () => {
+        if (canvasRef.current && fabricCanvas) {
+          fabricCanvas.setDimensions({
+            width: canvasRef.current.offsetWidth,
+            height: 500
+          });
+          fabricCanvas.renderAll();
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        if (fabricCanvas) {
+          fabricCanvas.dispose();
+        }
+        window.removeEventListener('resize', handleResize);
+        
+        // Emit leave event
+        if (socket && currentUser) {
+          socket.emit('whiteboard-leave', {
+            groupId,
+            userId: currentUser.uid
+          });
+        }
+      };
+    } catch (error) {
+      console.error("Error initializing canvas:", error);
+      toast({
+        title: "Error initializing whiteboard",
+        description: "Could not initialize the collaborative whiteboard.",
+        variant: "destructive"
+      });
+    }
+  }, [canvasRef, groupId, socket, currentUser, activeColor, brushSize]);
   
   // Set up socket listeners
   useEffect(() => {
@@ -218,7 +231,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   
   // Handle tool changes
   useEffect(() => {
-    if (!canvas) return;
+    if (!canvas || !canvas.freeDrawingBrush) return;
     
     canvas.isDrawingMode = activeTool === 'draw';
     
@@ -346,7 +359,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const handleColorChange = (color: string) => {
     setActiveColor(color);
     
-    if (canvas) {
+    if (canvas && canvas.freeDrawingBrush) {
       canvas.freeDrawingBrush.color = color;
       
       // Update selected object color if applicable
@@ -367,7 +380,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const handleBrushSizeChange = (size: number) => {
     setBrushSize(size);
     
-    if (canvas) {
+    if (canvas && canvas.freeDrawingBrush) {
       canvas.freeDrawingBrush.width = size;
       
       // Update selected object stroke width if applicable
