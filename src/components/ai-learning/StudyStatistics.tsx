@@ -16,6 +16,19 @@ interface StatisticsData {
   strongestTopic: string;
 }
 
+// Define interface for quiz attempt data from Firestore
+interface QuizAttemptData {
+  userId: string;
+  quizId: string;
+  score: number;
+  completedAt: {
+    toDate: () => Date;
+  };
+  topic?: string;
+  timeSpent?: number;
+  date?: Date;
+}
+
 const COLORS = ['#4F46E5', '#7C3AED', '#2563EB', '#EC4899', '#8B5CF6'];
 
 export function StudyStatistics() {
@@ -31,10 +44,13 @@ export function StudyStatistics() {
         const attemptsRef = collection(db, 'quizAttempts');
         const attemptsQuery = query(attemptsRef, where('userId', '==', currentUser.uid));
         const attemptsSnap = await getDocs(attemptsQuery);
-        const attempts = attemptsSnap.docs.map(doc => ({
-          ...doc.data(),
-          date: doc.data().completedAt.toDate(),
-        }));
+        const attempts = attemptsSnap.docs.map(doc => {
+          const data = doc.data() as QuizAttemptData;
+          return {
+            ...data,
+            date: data.completedAt?.toDate() || new Date(),
+          };
+        });
 
         // Process data for charts
         const dailyScores = attempts.map(attempt => ({
@@ -53,7 +69,10 @@ export function StudyStatistics() {
           value,
         }));
 
-        const averageScore = attempts.reduce((acc, curr) => acc + curr.score, 0) / attempts.length;
+        const averageScore = attempts.length > 0 
+          ? attempts.reduce((acc, curr) => acc + curr.score, 0) / attempts.length
+          : 0;
+          
         const totalStudyTime = attempts.reduce((acc, curr) => acc + (curr.timeSpent || 0), 0);
         
         const strongestTopic = Object.entries(topics).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
