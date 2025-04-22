@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, doc, onSnapshot, setDoc, updateDoc, arrayUnion, Timestamp } from 'firebase/firestore';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface CollaborativeWhiteboardProps {
   groupId: string;
@@ -402,14 +403,14 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
     if (!canvas || !socket || !currentUser) return;
     
     canvas.on('path:created', (e) => {
-      const path = e.path;
+      const path = e.path as any; // Cast to any to access path data
       
       // Emit the path to other clients
       socket.emit('whiteboard-object-added', {
         groupId,
         userId: currentUser.uid,
         objectType: 'path',
-        path: path.path,
+        path: path.path, // Access path data from any type
         stroke: path.stroke,
         strokeWidth: path.strokeWidth,
       });
@@ -419,7 +420,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         groupId,
         userId: currentUser.uid,
         objectType: 'path',
-        path: path.path,
+        path: path.path, // Access path data from any type
         stroke: path.stroke,
         strokeWidth: path.strokeWidth,
       });

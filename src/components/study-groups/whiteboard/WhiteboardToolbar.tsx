@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Pencil, Square, Circle, Trash, Text, Shapes, Brush, ColorPicker } from 'lucide-react';
+import { Pencil, Square, Circle, Trash, Text, Shapes, Brush } from 'lucide-react';
 
 interface WhiteboardToolbarProps {
   activeTool: string;
@@ -100,7 +99,7 @@ export function WhiteboardToolbar({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="outline" className="flex items-center gap-1 h-8">
-            <ColorPicker className="h-4 w-4" />
+            <Pencil className="h-4 w-4" />
             <div 
               className="h-4 w-4 rounded-full border border-gray-300" 
               style={{ backgroundColor: activeColor }}
