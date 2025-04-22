@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -58,6 +59,13 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionsRef = useRef<Record<string, RTCPeerConnection>>({});
   const remoteVideoRefs = useRef<{ [key: string]: React.RefObject<HTMLVideoElement> }>({});
+
+  // Connect local video stream to video element
+  useEffect(() => {
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream, isCallDialogOpen]);
 
   useEffect(() => {
     const SOCKET_URL = 'https://studysync-sockets.onrender.com';
@@ -219,14 +227,36 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     };
   }, [isCallDialogOpen, localStream, groupId, currentUser]);
 
+  // Added useEffect to handle remote video streams
+  useEffect(() => {
+    Object.entries(remoteStreams).forEach(([userId, stream]) => {
+      if (!remoteVideoRefs.current[userId]) {
+        remoteVideoRefs.current[userId] = React.createRef<HTMLVideoElement>();
+      }
+      
+      const videoElement = remoteVideoRefs.current[userId]?.current;
+      if (videoElement && videoElement.srcObject !== stream) {
+        videoElement.srcObject = stream;
+      }
+    });
+  }, [remoteStreams]);
+
   const initializeLocalStream = async (withVideo: boolean) => {
     try {
+      console.log("Attempting to access media devices with video:", withVideo);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: withVideo,
         audio: true
       });
       
+      console.log("Media access successful:", stream.getTracks().length, "tracks");
       setLocalStream(stream);
+      
+      // Explicitly set the stream to the video element
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+      
       return stream;
     } catch (error) {
       console.error('Error accessing media devices:', error);
@@ -298,6 +328,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const startCall = async (withVideo: boolean) => {
     setIsVideoCall(withVideo);
     
+    console.log("Starting call with video:", withVideo);
     const stream = await initializeLocalStream(withVideo);
     if (!stream) return;
     
@@ -373,7 +404,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
               senderId: data.senderId,
               senderName: data.senderName,
               content: data.content,
-              timestamp: data.timestamp.toDate(),
+              timestamp: data.timestamp ? data.timestamp.toDate() : new Date(),
               isSystemMessage: data.isSystemMessage || false
             } as StudyGroupMessage;
           });
@@ -469,19 +500,6 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       setIsSending(false);
     }
   };
-
-  useEffect(() => {
-    Object.entries(remoteStreams).forEach(([userId, stream]) => {
-      if (!remoteVideoRefs.current[userId]) {
-        remoteVideoRefs.current[userId] = React.createRef<HTMLVideoElement>();
-      }
-      
-      const videoElement = remoteVideoRefs.current[userId]?.current;
-      if (videoElement && videoElement.srcObject !== stream) {
-        videoElement.srcObject = stream;
-      }
-    });
-  }, [remoteStreams]);
 
   const formatTimestamp = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -649,7 +667,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
                     autoPlay
                     muted
                     playsInline
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover min-h-[240px]"
                   />
                 ) : (
                   <div className="w-full h-full min-h-[240px] flex items-center justify-center">
@@ -678,7 +696,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
                       ref={remoteVideoRefs.current[userId]}
                       autoPlay
                       playsInline
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover min-h-[240px]"
                     />
                     <div className="absolute bottom-2 left-2 text-white bg-black/50 px-2 py-1 rounded text-sm">
                       {userId}
