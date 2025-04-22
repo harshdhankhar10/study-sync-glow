@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Quiz } from '@/types/quiz';
+import { Loader2 } from 'lucide-react';
 
 interface QuizCreationDialogProps {
   onCreateQuiz: (topic: string, difficulty: Quiz['difficulty'], questionCount: number, timeLimit: number) => Promise<void>;
@@ -16,11 +17,19 @@ export function QuizCreationDialog({ onCreateQuiz }: QuizCreationDialogProps) {
   const [questionCount, setQuestionCount] = useState(5);
   const [timeLimit, setTimeLimit] = useState(10);
   const [open, setOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onCreateQuiz(topic, difficulty, questionCount, timeLimit);
-    setOpen(false);
+    setIsGenerating(true);
+    try {
+      await onCreateQuiz(topic, difficulty, questionCount, timeLimit);
+      setOpen(false);
+    } catch (error) {
+      console.error('Error creating quiz:', error);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -77,8 +86,15 @@ export function QuizCreationDialog({ onCreateQuiz }: QuizCreationDialogProps) {
               required
             />
           </div>
-          <Button type="submit" className="w-full">
-            Generate Quiz
+          <Button type="submit" className="w-full" disabled={isGenerating}>
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating Quiz...
+              </>
+            ) : (
+              'Generate Quiz'
+            )}
           </Button>
         </form>
       </DialogContent>

@@ -2,33 +2,26 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, orderBy, limit } from 'firebase/firestore';
 import { Quiz, QuizAnalytics, QuizAnswer, QuizAttempt } from '@/types/quiz';
 import { generateQuiz, generateQuizAnalytics } from '@/lib/quiz-generator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Brain, Clock, Target, Trophy, BarChart2 } from 'lucide-react';
+import { Brain, Clock, Target, Trophy, BarChart2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { QuizView } from './QuizView';
 import { QuizCreationDialog } from './QuizCreationDialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const STUDY_TOPICS = [
-  "Critical Thinking & Analysis",
-  "Research Methodology",
-  "Academic Writing",
-  "Data Analysis",
-  "Problem Solving",
-  "Scientific Method",
-  "Study Techniques",
-  "Learning Strategies",
-  "Time Management",
-  "Project Planning"
-];
+interface QuizPlatformProps {
+  onQuizCreated?: () => void;
+}
 
-export function QuizPlatform() {
+export function QuizPlatform({ onQuizCreated }: QuizPlatformProps) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [analytics, setAnalytics] = useState<QuizAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [userContext, setUserContext] = useState<any>(null);
+  const [showResults, setShowResults] = useState(false);
   const { toast } = useToast();
   const { currentUser } = useAuth();
 
@@ -44,8 +37,14 @@ export function QuizPlatform() {
 
     try {
       setLoading(true);
+      // Load latest quiz first
       const quizzesRef = collection(db, 'quizzes');
-      const quizzesQuery = query(quizzesRef, where('userId', '==', currentUser.uid));
+      const quizzesQuery = query(
+        quizzesRef, 
+        where('userId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc'),
+        limit(1)
+      );
       const quizzesSnap = await getDocs(quizzesQuery);
       const quizzesData = quizzesSnap.docs.map(doc => ({
         id: doc.id,
@@ -72,6 +71,10 @@ export function QuizPlatform() {
 
       const quizAnalytics = await generateQuizAnalytics(attemptsData);
       setAnalytics(quizAnalytics);
+      
+      if (onQuizCreated) {
+        onQuizCreated();
+      }
     } catch (error) {
       console.error('Error loading content:', error);
       toast({
@@ -132,7 +135,8 @@ export function QuizPlatform() {
         description: 'New quiz has been generated!',
       });
 
-      loadUserContent();
+      await loadUserContent();
+      setShowResults(false);
     } catch (error) {
       console.error('Error generating quiz:', error);
       toast({
@@ -145,6 +149,7 @@ export function QuizPlatform() {
 
   const handleQuizComplete = async (score: number, timeSpent: number, answers: QuizAnswer[]) => {
     if (!currentUser || !quizzes[0]) return;
+    setShowResults(true);
 
     try {
       const attemptData: QuizAttempt = {
@@ -173,8 +178,12 @@ export function QuizPlatform() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center p-10">
-        <p className="text-lg text-gray-500">Loading your quizzes...</p>
+      <div className="space-y-6">
+        <div className="flex justify-center items-center">
+          <Skeleton className="h-8 w-64" />
+        </div>
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -191,7 +200,7 @@ export function QuizPlatform() {
         <QuizCreationDialog onCreateQuiz={handleCreateQuiz} />
       </div>
 
-      {analytics && (
+      {analytics && analytics.totalAttempts > 0 && (
         <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
           <CardHeader>
             <CardTitle className="text-lg">Your Learning Analytics</CardTitle>
@@ -241,6 +250,7 @@ export function QuizPlatform() {
             <QuizView
               quiz={quizzes[0]}
               onComplete={handleQuizComplete}
+              showResults={showResults}
             />
           ) : (
             <div className="text-center p-8">

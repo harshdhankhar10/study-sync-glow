@@ -5,15 +5,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { Quiz } from '@/types/quiz';
 import { QuizView } from '@/components/ai-learning/QuizView';
 import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function FlashcardsQuizzes() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
+  const [activeTab, setActiveTab] = useState('quiz-platform');
 
   useEffect(() => {
     if (currentUser) {
@@ -27,7 +29,12 @@ export default function FlashcardsQuizzes() {
     try {
       setLoading(true);
       const quizzesRef = collection(db, 'quizzes');
-      const quizzesQuery = query(quizzesRef, where('userId', '==', currentUser.uid));
+      const quizzesQuery = query(
+        quizzesRef, 
+        where('userId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc'),
+        limit(1)
+      );
       const quizzesSnap = await getDocs(quizzesQuery);
       const quizzesData = quizzesSnap.docs.map(doc => ({
         id: doc.id,
@@ -56,22 +63,30 @@ export default function FlashcardsQuizzes() {
         AI-Powered Quiz Platform
       </h1>
       
-      <Tabs defaultValue="quiz-platform" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
           <TabsTrigger value="quiz-platform">Quiz Platform</TabsTrigger>
           <TabsTrigger value="quick-quiz">Quick Quiz</TabsTrigger>
         </TabsList>
         
         <TabsContent value="quiz-platform">
-          <QuizPlatform />
+          <QuizPlatform onQuizCreated={loadQuizzes} />
         </TabsContent>
         
         <TabsContent value="quick-quiz">
           <Card>
             <CardContent className="pt-6">
               {loading ? (
-                <div className="flex justify-center items-center p-10">
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <div className="space-y-4 p-6">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                  <Skeleton className="h-12 w-full" />
                 </div>
               ) : quizzes.length > 0 ? (
                 <QuizView

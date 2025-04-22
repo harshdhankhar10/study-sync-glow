@@ -3,22 +3,30 @@ import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Quiz, QuizAnswer } from '@/types/quiz';
-import { CheckCircle2, XCircle, BarChart2 } from "lucide-react";
+import { CheckCircle2, XCircle, BarChart2, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
 interface QuizViewProps {
   quiz: Quiz;
   onComplete: (score: number, timeSpent: number, answers: QuizAnswer[]) => void;
+  showResults?: boolean;
 }
 
-export function QuizView({ quiz, onComplete }: QuizViewProps) {
+export function QuizView({ quiz, onComplete, showResults: externalShowResults }: QuizViewProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [showResults, setShowResults] = useState(false);
   const [startTime] = useState(Date.now());
   const [quizAnswers, setQuizAnswers] = useState<QuizAnswer[]>([]);
   const [quizScore, setQuizScore] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (externalShowResults !== undefined) {
+      setShowResults(externalShowResults);
+    }
+  }, [externalShowResults]);
 
   // Early return if quiz or quiz.questions is undefined or empty
   if (!quiz || !quiz.questions || quiz.questions.length === 0) {
@@ -34,39 +42,59 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
   const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
 
   const handleSelectAnswer = (answer: string) => {
+    if (!currentQuestion) return; // Safety check
+    
     setSelectedAnswers(prev => ({
       ...prev,
       [currentQuestion.id]: answer
     }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (!currentQuestion) return; // Safety check
+    
     if (isLastQuestion) {
-      const timeSpent = (Date.now() - startTime) / 1000; // Convert to seconds
-      const answers: QuizAnswer[] = quiz.questions.map(question => ({
-        questionId: question.id,
-        selectedAnswer: selectedAnswers[question.id] || '',
-        isCorrect: selectedAnswers[question.id] === question.correctAnswer,
-        timeSpent: timeSpent / quiz.questions.length // Average time per question
-      }));
+      setIsSubmitting(true);
+      try {
+        const timeSpent = (Date.now() - startTime) / 1000; // Convert to seconds
+        
+        // Create answers array with safety checks
+        const answers: QuizAnswer[] = quiz.questions.map(question => {
+          const selectedAnswer = selectedAnswers[question.id] || '';
+          return {
+            questionId: question.id,
+            selectedAnswer,
+            isCorrect: selectedAnswer === question.correctAnswer,
+            timeSpent: timeSpent / quiz.questions.length // Average time per question
+          };
+        });
 
-      const score = (answers.filter(a => a.isCorrect).length / answers.length) * 100;
-      setQuizScore(score);
-      setQuizAnswers(answers);
-      setShowResults(true);
-      onComplete(score, timeSpent, answers);
-      
-      toast({
-        title: 'Quiz Complete!',
-        description: `You've completed the quiz. View your results to see how you did.`,
-      });
+        const correctAnswers = answers.filter(a => a.isCorrect).length;
+        const score = (correctAnswers / answers.length) * 100;
+        
+        setQuizScore(score);
+        setQuizAnswers(answers);
+        setShowResults(true);
+        
+        // Call the callback
+        onComplete(score, timeSpent, answers);
+      } catch (error) {
+        console.error('Error completing quiz:', error);
+        toast({
+          title: 'Error',
+          description: 'There was a problem saving your quiz results.',
+          variant: 'destructive'
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
 
   const getStrengthsAndWeaknesses = () => {
-    if (quizAnswers.length === 0) return { strengths: [], weaknesses: [] };
+    if (quizAnswers.length === 0 || !quiz.questions) return { strengths: [], weaknesses: [] };
     
     // Group questions by correct/incorrect
     const correct = quizAnswers.filter(a => a.isCorrect);
@@ -75,12 +103,12 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
     // Match answers with questions to get topics
     const strengths = correct.map(a => {
       const question = quiz.questions.find(q => q.id === a.questionId);
-      return question?.question.split(' ').slice(0, 3).join(' ') + '...';
+      return question?.question.substring(0, 30) + '...';
     }).filter(Boolean);
     
     const weaknesses = incorrect.map(a => {
       const question = quiz.questions.find(q => q.id === a.questionId);
-      return question?.question.split(' ').slice(0, 3).join(' ') + '...';
+      return question?.question.substring(0, 30) + '...';
     }).filter(Boolean);
     
     return {
@@ -142,8 +170,11 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
             <div className="rounded-lg border p-4">
               <div className="space-y-4">
                 {quiz.questions.map((question, index) => {
+                  if (!question) return null; // Safety check
+                  
                   const userAnswer = selectedAnswers[question.id];
                   const isCorrect = userAnswer === question.correctAnswer;
+                  
                   return (
                     <div key={question.id} className={`p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
                       <div className="flex items-center gap-2 mb-2">
@@ -177,7 +208,7 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
     );
   }
 
-  // Safe check to ensure current question exists
+  // Safety check to ensure current question exists
   if (!currentQuestion || !currentQuestion.options) {
     return (
       <Card className="p-6">
@@ -195,7 +226,7 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
         </div>
         <p className="text-xl mb-6">{currentQuestion.question}</p>
         <div className="space-y-3">
-          {currentQuestion.options && currentQuestion.options.map((option) => (
+          {Array.isArray(currentQuestion.options) && currentQuestion.options.map((option) => (
             <Button
               key={option}
               variant="outline"
@@ -213,10 +244,19 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
       </div>
       <Button
         className="w-full"
-        disabled={!selectedAnswers[currentQuestion.id]}
+        disabled={!selectedAnswers[currentQuestion.id] || isSubmitting}
         onClick={handleNext}
       >
-        {isLastQuestion ? 'Finish Quiz' : 'Next Question'}
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Submitting...
+          </>
+        ) : isLastQuestion ? (
+          'Finish Quiz'
+        ) : (
+          'Next Question'
+        )}
       </Button>
     </Card>
   );
