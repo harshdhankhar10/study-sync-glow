@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -30,8 +29,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from '@/components/ui/dialog';
+import { GEMINI_API_KEY, GEMINI_ENDPOINT } from '@/lib/ai';
 
 interface GroupChatProps {
   groupId: string;
@@ -52,21 +51,78 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
-  const [activeParticipants, setActiveParticipants] = useState<string[]>([]);
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const peerConnectionsRef = useRef<Record<string, RTCPeerConnection>>({});
-  const remoteVideoRefs = useRef<{ [key: string]: React.RefObject<HTMLVideoElement> }>({});
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
-  // Connect local video stream to video element
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
+  // Initialize WebRTC
+  const initializeWebRTC = async (withVideo: boolean) => {
+    try {
+      console.log("Initializing WebRTC with video:", withVideo);
+      
+      // Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: withVideo ? { width: 640, height: 480 } : false,
+        audio: true
+      });
+      
+      console.log("Got media stream:", stream.getTracks().length, "tracks");
+      setLocalStream(stream);
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        await localVideoRef.current.play().catch(e => console.error("Error playing local video:", e));
+      }
+      
+      // Create peer connection
+      const configuration = {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+        ]
+      };
+      
+      const peerConnection = new RTCPeerConnection(configuration);
+      peerConnectionRef.current = peerConnection;
+      
+      // Add tracks to peer connection
+      stream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, stream);
+      });
+      
+      // Handle incoming tracks
+      peerConnection.ontrack = (event) => {
+        console.log("Received remote track");
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+        }
+      };
+      
+      // Handle ICE candidates
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socketRef.current?.emit('ice-candidate', {
+            candidate: event.candidate,
+            groupId
+          });
+        }
+      };
+      
+      return peerConnection;
+    } catch (error) {
+      console.error("Error initializing WebRTC:", error);
+      toast({
+        title: "Failed to start call",
+        description: "Could not access camera or microphone. Please check permissions.",
+        variant: "destructive"
+      });
+      return null;
     }
-  }, [localStream, isCallDialogOpen]);
+  };
 
+  // Socket.io connection
   useEffect(() => {
     const SOCKET_URL = 'https://studysync-sockets.onrender.com';
     
@@ -78,307 +134,153 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
       }
     });
     
-    socketRef.current.on('connect', () => {
-      console.log('Socket connected to group:', groupId);
-    });
-    
-    socketRef.current.on('error', (error: any) => {
-      console.error('Socket error:', error);
-      toast({
-        title: "Connection error",
-        description: "There was an error connecting to the chat. Please refresh the page.",
-        variant: "destructive"
-      });
-    });
-    
-    socketRef.current.on('new-message', (newMsg: any) => {
-      if (newMsg.senderId !== currentUser?.uid) {
-        setMessages(prev => [...prev, {
-          id: newMsg.id,
-          senderId: newMsg.senderId,
-          senderName: newMsg.senderName,
-          content: newMsg.content,
-          timestamp: new Date(newMsg.timestamp)
-        }]);
-        
-        if (scrollAreaRef.current) {
-          setTimeout(() => {
-            scrollAreaRef.current?.scrollTo({
-              top: scrollAreaRef.current.scrollHeight,
-              behavior: 'smooth'
-            });
-          }, 100);
-        }
+    socketRef.current.on('offer', async (offer: RTCSessionDescriptionInit) => {
+      if (!peerConnectionRef.current) {
+        await initializeWebRTC(isVideoCall);
+      }
+      
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        socketRef.current.emit('answer', { answer, groupId });
       }
     });
     
-    socketRef.current.on('user-joined-call', (userId: string, username: string) => {
-      setActiveParticipants(prev => [...prev, userId]);
-      
-      const joinMessage = `${username} joined the call`;
-      sendSystemMessage(joinMessage);
-      
-      if (localStream) {
-        createPeerConnection(userId);
-        createOffer(userId);
+    socketRef.current.on('answer', async (answer: RTCSessionDescriptionInit) => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(answer));
       }
     });
     
-    socketRef.current.on('user-left-call', (userId: string, username: string) => {
-      setActiveParticipants(prev => prev.filter(id => id !== userId));
-      
-      const leaveMessage = `${username} left the call`;
-      sendSystemMessage(leaveMessage);
-      
-      if (peerConnectionsRef.current[userId]) {
-        peerConnectionsRef.current[userId].close();
-        delete peerConnectionsRef.current[userId];
-      }
-      
-      setRemoteStreams(prev => {
-        const newStreams = { ...prev };
-        delete newStreams[userId];
-        return newStreams;
-      });
-    });
-    
-    socketRef.current.on('call-offer', async (offer: RTCSessionDescriptionInit, senderUserId: string) => {
-      console.log('Received offer from:', senderUserId);
-      
-      if (!localStream) {
-        await initializeLocalStream(isVideoCall);
-      }
-      
-      const peerConnection = createPeerConnection(senderUserId);
-      
-      try {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        
-        socketRef.current.emit('call-answer', answer, senderUserId, currentUser?.uid);
-      } catch (error) {
-        console.error('Error creating answer:', error);
-      }
-    });
-    
-    socketRef.current.on('call-answer', async (answer: RTCSessionDescriptionInit, senderUserId: string) => {
-      console.log('Received answer from:', senderUserId);
-      
-      const peerConnection = peerConnectionsRef.current[senderUserId];
-      if (peerConnection) {
+    socketRef.current.on('ice-candidate', async (data: { candidate: RTCIceCandidateInit }) => {
+      if (peerConnectionRef.current) {
         try {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
         } catch (error) {
-          console.error('Error setting remote description:', error);
-        }
-      }
-    });
-    
-    socketRef.current.on('call-ice-candidate', (candidate: RTCIceCandidateInit, senderUserId: string) => {
-      console.log('Received ICE candidate from:', senderUserId);
-      
-      const peerConnection = peerConnectionsRef.current[senderUserId];
-      if (peerConnection) {
-        try {
-          peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (error) {
-          console.error('Error adding ICE candidate:', error);
+          console.error("Error adding ICE candidate:", error);
         }
       }
     });
     
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-      }
-      
-      Object.values(peerConnectionsRef.current).forEach(connection => {
-        connection.close();
-      });
-      
       if (socketRef.current) {
         socketRef.current.disconnect();
       }
-    };
-  }, [groupId, currentUser, toast, isVideoCall]);
-
-  useEffect(() => {
-    if (isCallDialogOpen && localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-    
-    return () => {
-      if (!isCallDialogOpen && localStream) {
+      if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
-        setLocalStream(null);
-        
-        if (socketRef.current) {
-          socketRef.current.emit('leave-call', groupId, currentUser?.uid, currentUser?.displayName || currentUser?.email);
-        }
-        
-        Object.values(peerConnectionsRef.current).forEach(connection => {
-          connection.close();
-        });
-        peerConnectionsRef.current = {};
-        setRemoteStreams({});
-        setActiveParticipants([]);
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
       }
     };
-  }, [isCallDialogOpen, localStream, groupId, currentUser]);
+  }, [groupId, currentUser, isVideoCall]);
 
-  // Added useEffect to handle remote video streams
-  useEffect(() => {
-    Object.entries(remoteStreams).forEach(([userId, stream]) => {
-      if (!remoteVideoRefs.current[userId]) {
-        remoteVideoRefs.current[userId] = React.createRef<HTMLVideoElement>();
-      }
-      
-      const videoElement = remoteVideoRefs.current[userId]?.current;
-      if (videoElement && videoElement.srcObject !== stream) {
-        videoElement.srcObject = stream;
-      }
-    });
-  }, [remoteStreams]);
-
-  const initializeLocalStream = async (withVideo: boolean) => {
+  // AI Chat Function
+  const generateAIResponse = async (prompt: string): Promise<string> => {
     try {
-      console.log("Attempting to access media devices with video:", withVideo);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: withVideo,
-        audio: true
+      const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a helpful study group assistant. Respond to this message from a study group: ${prompt}`
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1000,
+          }
+        }),
       });
+
+      if (!response.ok) throw new Error('AI response failed');
       
-      console.log("Media access successful:", stream.getTracks().length, "tracks");
-      setLocalStream(stream);
-      
-      // Explicitly set the stream to the video element
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-      
-      return stream;
+      const data = await response.json();
+      return data.candidates[0].content.parts[0].text;
     } catch (error) {
-      console.error('Error accessing media devices:', error);
-      toast({
-        title: "Media Error",
-        description: "Could not access camera or microphone. Please check permissions.",
-        variant: "destructive"
-      });
-      return null;
+      console.error("Error generating AI response:", error);
+      return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
     }
   };
 
-  const createPeerConnection = (userId: string) => {
-    if (peerConnectionsRef.current[userId]) {
-      return peerConnectionsRef.current[userId];
-    }
+  // Handle sending messages
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const configuration = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
-    };
+    if (!currentUser || !groupId || !newMessage.trim()) return;
     
-    const peerConnection = new RTCPeerConnection(configuration);
-    
-    if (localStream) {
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-      });
-    }
-    
-    peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        socketRef.current.emit('call-ice-candidate', event.candidate, userId, currentUser?.uid);
-      }
-    };
-    
-    peerConnection.ontrack = (event) => {
-      console.log('Received remote track from:', userId);
-      
-      if (event.streams && event.streams[0]) {
-        setRemoteStreams(prev => ({
-          ...prev,
-          [userId]: event.streams[0]
-        }));
-      }
-    };
-    
-    peerConnectionsRef.current[userId] = peerConnection;
-    return peerConnection;
-  };
-
-  const createOffer = async (userId: string) => {
-    const peerConnection = peerConnectionsRef.current[userId];
-    
-    if (peerConnection) {
-      try {
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        
-        socketRef.current.emit('call-offer', offer, userId, currentUser?.uid);
-      } catch (error) {
-        console.error('Error creating offer:', error);
-      }
-    }
-  };
-
-  const startCall = async (withVideo: boolean) => {
-    setIsVideoCall(withVideo);
-    
-    console.log("Starting call with video:", withVideo);
-    const stream = await initializeLocalStream(withVideo);
-    if (!stream) return;
-    
-    setIsCallDialogOpen(true);
-    
-    socketRef.current.emit('join-call', groupId, currentUser?.uid, currentUser?.displayName || currentUser?.email, withVideo);
-    
-    const callType = withVideo ? 'video' : 'audio';
-    sendSystemMessage(`${currentUser?.displayName || currentUser?.email} started a ${callType} call`);
-  };
-
-  const toggleVideo = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !isVideoEnabled;
-        setIsVideoEnabled(!isVideoEnabled);
-      }
-    }
-  };
-
-  const toggleAudio = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !isAudioEnabled;
-        setIsAudioEnabled(!isAudioEnabled);
-      }
-    }
-  };
-
-  const endCall = () => {
-    setIsCallDialogOpen(false);
-  };
-
-  const sendSystemMessage = async (content: string) => {
     try {
+      setIsSending(true);
+      
+      // Check if message is directed to AI
+      const isAIMessage = newMessage.trim().toLowerCase().startsWith('@ai');
+      let messageContent = newMessage.trim();
+      let aiResponse = '';
+      
+      if (isAIMessage) {
+        // Remove @ai prefix and get AI response
+        const prompt = messageContent.substring(3).trim();
+        aiResponse = await generateAIResponse(prompt);
+      }
+      
+      // Send user message
       const messageData = {
         groupId,
-        senderId: 'system',
-        senderName: 'System',
-        content,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.email,
+        content: messageContent,
         timestamp: serverTimestamp(),
-        isSystemMessage: true
+        isSystemMessage: false
       };
       
       await addDoc(collection(db, 'groupMessages'), messageData);
+      
+      // If AI response exists, send it as a new message
+      if (aiResponse) {
+        const aiMessageData = {
+          groupId,
+          senderId: 'ai',
+          senderName: 'AI Assistant',
+          content: aiResponse,
+          timestamp: serverTimestamp(),
+          isSystemMessage: false
+        };
+        
+        await addDoc(collection(db, 'groupMessages'), aiMessageData);
+      }
+      
+      setNewMessage('');
+      
+      if (scrollAreaRef.current) {
+        setTimeout(() => {
+          scrollAreaRef.current?.scrollTo({
+            top: scrollAreaRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 100);
+      }
     } catch (error) {
-      console.error("Error sending system message:", error);
+      console.error("Error sending message:", error);
+      toast({
+        title: "Failed to send message",
+        description: "There was an error sending your message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
     }
+  };
+
+  const formatTimestamp = (date: Date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    }).format(date);
   };
 
   useEffect(() => {
@@ -439,74 +341,56 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     loadMessages();
   }, [currentUser, groupId, toast]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const startCall = async (withVideo: boolean) => {
+    setIsVideoCall(withVideo);
+    setIsCallDialogOpen(true);
     
-    if (!currentUser || !groupId || !newMessage.trim()) return;
+    const peerConnection = await initializeWebRTC(withVideo);
+    if (!peerConnection) return;
     
     try {
-      setIsSending(true);
-      
-      const messageData = {
-        groupId,
-        senderId: currentUser.uid,
-        senderName: currentUser.displayName || currentUser.email,
-        senderPhotoURL: currentUser.photoURL || null,
-        content: newMessage.trim(),
-        timestamp: serverTimestamp(),
-        isSystemMessage: false
-      };
-      
-      const messageRef = await addDoc(collection(db, 'groupMessages'), messageData);
-      
-      if (socketRef.current) {
-        socketRef.current.emit('send-message', {
-          id: messageRef.id,
-          ...messageData,
-          timestamp: new Date().toISOString(),
-        });
-      }
-      
-      setNewMessage('');
-      
-      setMessages(prev => [
-        ...prev, 
-        {
-          id: messageRef.id,
-          senderId: currentUser.uid,
-          senderName: currentUser.displayName || currentUser.email || '',
-          content: newMessage.trim(),
-          timestamp: new Date(),
-          isSystemMessage: false
-        }
-      ]);
-      
-      if (scrollAreaRef.current) {
-        setTimeout(() => {
-          scrollAreaRef.current?.scrollTo({ 
-            top: scrollAreaRef.current.scrollHeight, 
-            behavior: 'smooth' 
-          });
-        }, 100);
-      }
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      socketRef.current.emit('offer', { offer, groupId });
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error creating offer:", error);
       toast({
-        title: "Failed to send message",
-        description: "There was an error sending your message. Please try again.",
+        title: "Call Failed",
+        description: "Could not establish call connection. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setIsSending(false);
     }
   };
 
-  const formatTimestamp = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true
-    }).format(date);
+  const toggleVideo = () => {
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !isVideoEnabled;
+        setIsVideoEnabled(!isVideoEnabled);
+      }
+    }
+  };
+
+  const toggleAudio = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !isAudioEnabled;
+        setIsAudioEnabled(!isAudioEnabled);
+      }
+    }
+  };
+
+  const endCall = () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop());
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+    setIsCallDialogOpen(false);
+    setLocalStream(null);
   };
 
   return (
@@ -652,83 +536,70 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
               {isVideoCall ? 'Video Call' : 'Audio Call'} - {groupName}
             </DialogTitle>
             <DialogDescription>
-              {activeParticipants.length > 0 
-                ? `${activeParticipants.length + 1} participants in this call` 
-                : 'Waiting for others to join...'}
+              Call in progress
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="relative bg-slate-800 rounded-lg overflow-hidden">
-                {isVideoCall ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-full object-cover min-h-[240px]"
-                  />
-                ) : (
-                  <div className="w-full h-full min-h-[240px] flex items-center justify-center">
-                    <Avatar className="h-20 w-20">
-                      <AvatarFallback className="text-3xl">
-                        {currentUser?.displayName 
-                          ? currentUser.displayName.substring(0, 2).toUpperCase() 
-                          : currentUser?.email?.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                )}
-                <div className="absolute bottom-2 left-2 text-white bg-black/50 px-2 py-1 rounded text-sm">
-                  You {!isAudioEnabled && '(muted)'}
+        
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative bg-slate-800 rounded-lg overflow-hidden">
+              {isVideoCall ? (
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover min-h-[240px]"
+                />
+              ) : (
+                <div className="w-full h-full min-h-[240px] flex items-center justify-center">
+                  <Avatar className="h-20 w-20">
+                    <AvatarFallback className="text-3xl">
+                      {currentUser?.displayName 
+                        ? currentUser.displayName.substring(0, 2).toUpperCase() 
+                        : currentUser?.email?.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
+              )}
+              <div className="absolute bottom-2 left-2 text-white bg-black/50 px-2 py-1 rounded text-sm">
+                You {!isAudioEnabled && '(muted)'}
               </div>
-              
-              {Object.entries(remoteStreams).map(([userId, stream]) => {
-                if (!remoteVideoRefs.current[userId]) {
-                  remoteVideoRefs.current[userId] = React.createRef<HTMLVideoElement>();
-                }
-                
-                return (
-                  <div key={userId} className="relative bg-slate-800 rounded-lg overflow-hidden">
-                    <video
-                      ref={remoteVideoRefs.current[userId]}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover min-h-[240px]"
-                    />
-                    <div className="absolute bottom-2 left-2 text-white bg-black/50 px-2 py-1 rounded text-sm">
-                      {userId}
-                    </div>
-                  </div>
-                );
-              })}
+            </div>
+            
+            <div className="relative bg-slate-800 rounded-lg overflow-hidden">
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover min-h-[240px]"
+              />
             </div>
           </div>
-          
-          <div className="flex justify-center gap-4 my-4">
-            <Button 
-              onClick={toggleVideo} 
-              variant="outline" 
-              className={!isVideoEnabled ? "bg-red-100" : ""}
-              disabled={!isVideoCall}
-            >
-              {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
-            </Button>
-            <Button 
-              onClick={toggleAudio} 
-              variant="outline"
-              className={!isAudioEnabled ? "bg-red-100" : ""}
-            >
-              {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            </Button>
-            <Button variant="destructive" onClick={endCall}>
-              End Call
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+        
+        <div className="flex justify-center gap-4 my-4">
+          <Button 
+            onClick={toggleVideo} 
+            variant="outline" 
+            className={!isVideoEnabled ? "bg-red-100" : ""}
+            disabled={!isVideoCall}
+          >
+            {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+          </Button>
+          <Button 
+            onClick={toggleAudio} 
+            variant="outline"
+            className={!isAudioEnabled ? "bg-red-100" : ""}
+          >
+            {isAudioEnabled ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+          </Button>
+          <Button variant="destructive" onClick={endCall}>
+            End Call
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }
