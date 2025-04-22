@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -9,7 +10,7 @@ import {
   serverTimestamp, 
   Timestamp,
   orderBy,
-  limit,
+  limit as firestoreLimit,
   onSnapshot
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -20,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { MessageSquare, Send, Info, Video, VideoOff, Mic, MicOff, PhoneCall } from 'lucide-react';
+import { MessageSquare, Send, Info, Video, VideoOff, Mic, MicOff, PhoneCall, Pencil } from 'lucide-react';
 import { StudyGroupMessage } from '@/types/studyGroups';
 import { io } from 'socket.io-client';
 import {
@@ -30,7 +31,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GEMINI_API_KEY, GEMINI_ENDPOINT } from '@/lib/ai';
+import { CollaborativeWhiteboard } from './whiteboard/CollaborativeWhiteboard';
 
 interface GroupChatProps {
   groupId: string;
@@ -56,6 +59,9 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  
+  const [activeTab, setActiveTab] = useState<'chat' | 'whiteboard'>('chat');
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
 
   // Initialize WebRTC
   const initializeWebRTC = async (withVideo: boolean) => {
@@ -295,7 +301,7 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
           messagesRef,
           where('groupId', '==', groupId),
           orderBy('timestamp', 'desc'),
-          limit(50)
+          firestoreLimit(50)
         );
         
         const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
@@ -393,6 +399,26 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
     setLocalStream(null);
   };
 
+  const toggleWhiteboard = () => {
+    setWhiteboardOpen(!whiteboardOpen);
+    
+    // If opening whiteboard, send system message
+    if (!whiteboardOpen && currentUser && groupId) {
+      const whiteboardMessage = {
+        groupId,
+        senderId: 'system',
+        senderName: 'System',
+        content: `${currentUser.displayName || currentUser.email} opened the collaborative whiteboard.`,
+        timestamp: serverTimestamp(),
+        isSystemMessage: true
+      };
+      
+      addDoc(collection(db, 'groupMessages'), whiteboardMessage).catch(error => {
+        console.error("Error sending whiteboard notification:", error);
+      });
+    }
+  };
+
   return (
     <>
       <Card className="flex flex-col h-[600px]">
@@ -403,6 +429,15 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
               {groupName} Chat
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className={`flex items-center gap-1 text-xs ${whiteboardOpen ? 'bg-primary/20' : ''}`}
+                onClick={toggleWhiteboard}
+              >
+                <Pencil className="h-3 w-3" />
+                Whiteboard
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -426,7 +461,14 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
         </CardHeader>
         <Separator />
         <CardContent className="flex-1 p-0 overflow-hidden">
-          {loading ? (
+          {whiteboardOpen ? (
+            <div className="h-full p-4">
+              <CollaborativeWhiteboard 
+                groupId={groupId} 
+                socket={socketRef.current} 
+              />
+            </div>
+          ) : loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="animate-pulse text-center">
                 <MessageSquare className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
@@ -516,12 +558,12 @@ export default function GroupChat({ groupId, groupName }: GroupChatProps) {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               className="flex-1"
-              disabled={!currentUser || isSending}
+              disabled={!currentUser || isSending || whiteboardOpen}
             />
             <Button 
               type="submit" 
               size="icon"
-              disabled={!newMessage.trim() || isSending}
+              disabled={!newMessage.trim() || isSending || whiteboardOpen}
             >
               <Send className="h-4 w-4" />
             </Button>
