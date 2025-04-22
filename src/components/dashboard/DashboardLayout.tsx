@@ -12,7 +12,7 @@ import {
   User, Book, BarChart2, LogOut, Target, Globe, Home, Award,
   Clock, MessageSquare, HelpCircle, ChevronDown, Plus, Search,
   Bell, ChevronRight, PieChart, BookOpen, Clipboard, CheckCircle, Layout, LineChart, 
-  LightbulbIcon, CheckSquare
+  LightbulbIcon, CheckSquare, Trophy
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,6 +69,13 @@ const navigationItems: SidebarSectionType[] = [
         title: "Progress",
         href: "/dashboard/progress",
         icon: LineChart,
+      },
+      {
+        title: "Gamification",
+        href: "/dashboard/gamification",
+        icon: Trophy,
+        badge: "New",
+        isFeatured: true,
       },
     ],
   },

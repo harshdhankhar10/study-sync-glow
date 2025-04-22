@@ -9,6 +9,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { differenceInCalendarDays } from 'date-fns';
+import { checkAndAwardStreakBadges } from './gamificationService';
 
 // Type definitions for the streak data
 export interface StreakData {
@@ -134,6 +135,14 @@ export const recordStudySession = async (userId: string): Promise<StreakData> =>
     };
     
     await setDoc(streakRef, initialData);
+    
+    // Award gamification badges/points for first streak day
+    try {
+      await checkAndAwardStreakBadges(userId, initialData);
+    } catch (error) {
+      console.error("Error awarding gamification rewards:", error);
+    }
+    
     return initialData;
   }
   
@@ -151,6 +160,14 @@ export const recordStudySession = async (userId: string): Promise<StreakData> =>
     };
     
     await setDoc(streakRef, updatedData);
+    
+    // Award gamification badges/points for first streak day
+    try {
+      await checkAndAwardStreakBadges(userId, updatedData);
+    } catch (error) {
+      console.error("Error awarding gamification rewards:", error);
+    }
+    
     return updatedData;
   }
   
@@ -238,6 +255,14 @@ export const recordStudySession = async (userId: string): Promise<StreakData> =>
     };
     
     await setDoc(streakRef, updatedData);
+    
+    // Award gamification badges/points for the streak
+    try {
+      await checkAndAwardStreakBadges(userId, updatedData);
+    } catch (error) {
+      console.error("Error awarding gamification rewards:", error);
+    }
+    
     return updatedData;
   }
   
@@ -250,6 +275,14 @@ export const recordStudySession = async (userId: string): Promise<StreakData> =>
   };
   
   await setDoc(streakRef, updatedData);
+  
+  // Award gamification badges/points for starting a new streak
+  try {
+    await checkAndAwardStreakBadges(userId, updatedData);
+  } catch (error) {
+    console.error("Error awarding gamification rewards:", error);
+  }
+  
   return updatedData;
 };
 

@@ -31,6 +31,7 @@ import Documentation from "./pages/Documentation";
 import StudyGroupDetail from "./pages/dashboard/StudyGroupDetail";
 import StudyStatisticsPage from "./pages/dashboard/StudyStatistics";
 import StudyPromptGenerator from "./pages/dashboard/StudyPromptGenerator";
+import Gamification from "./pages/dashboard/Gamification";
 
 const App = () => {
   return (
@@ -71,6 +72,13 @@ const App = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <StudyPromptGenerator />
+            </DashboardLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/gamification" element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <Gamification />
             </DashboardLayout>
           </ProtectedRoute>
         } />
