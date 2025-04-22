@@ -18,9 +18,13 @@ export async function generateQuiz(topic: string, difficulty: Quiz['difficulty']
                 User's Major: ${userContext.major || 'Not specified'}
                 Skills: ${JSON.stringify(userContext.skills || [])}
                 Goals: ${JSON.stringify(userContext.goals || [])}
+                Number of Questions: ${userContext.questionCount || 5}
+                Time Limit: ${userContext.timeLimit || 10} minutes
                 
                 Create a quiz that:
+                - Has exactly ${userContext.questionCount || 5} questions
                 - Is appropriate for the ${difficulty} level
+                - Can be completed in ${userContext.timeLimit || 10} minutes
                 - Includes varied question types
                 - Provides detailed explanations
                 - Tests critical thinking
@@ -32,7 +36,7 @@ export async function generateQuiz(topic: string, difficulty: Quiz['difficulty']
                   "description": "string",
                   "topic": "string",
                   "difficulty": "${difficulty}",
-                  "duration": number,
+                  "duration": ${userContext.timeLimit || 10},
                   "questions": [
                     {
                       "id": "string",

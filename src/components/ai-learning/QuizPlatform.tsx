@@ -2,15 +2,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
-import { Quiz, QuizAnalytics, QuizAnswer } from '@/types/quiz';
+import { Quiz, QuizAnalytics, QuizAnswer, QuizAttempt } from '@/types/quiz';
 import { generateQuiz, generateQuizAnalytics } from '@/lib/quiz-generator';
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Clock, Target, Trophy, Loader2, BarChart2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Brain, Clock, Target, Trophy, BarChart2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { QuizView } from './flashcards/QuizView';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { QuizView } from './QuizView';
+import { QuizCreationDialog } from './QuizCreationDialog';
 
 const STUDY_TOPICS = [
   "Critical Thinking & Analysis",
@@ -26,12 +24,9 @@ const STUDY_TOPICS = [
 ];
 
 export function QuizPlatform() {
-  const [selectedTopic, setSelectedTopic] = useState(STUDY_TOPICS[0]);
-  const [difficulty, setDifficulty] = useState<Quiz['difficulty']>('beginner');
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [analytics, setAnalytics] = useState<QuizAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
   const [userContext, setUserContext] = useState<any>(null);
   const { toast } = useToast();
   const { currentUser } = useAuth();
@@ -103,22 +98,28 @@ export function QuizPlatform() {
     }
   };
 
-  const handleGenerateQuiz = async () => {
+  const handleCreateQuiz = async (topic: string, difficulty: Quiz['difficulty'], questionCount: number, timeLimit: number) => {
     if (!currentUser || !userContext) return;
 
     try {
-      setGenerating(true);
       toast({
         title: 'Generating quiz',
-        description: `AI is creating a ${difficulty} level quiz about ${selectedTopic}...`,
+        description: `AI is creating a ${difficulty} level quiz about ${topic}...`,
       });
 
-      const newQuiz = await generateQuiz(selectedTopic, difficulty, userContext);
+      const newQuiz = await generateQuiz(topic, difficulty, {
+        ...userContext,
+        questionCount,
+        timeLimit
+      });
 
-      await setDoc(doc(collection(db, 'quizzes'), newQuiz.id), {
+      const quizData = {
         ...newQuiz,
         userId: currentUser.uid,
-      });
+        createdAt: new Date()
+      };
+
+      await setDoc(doc(collection(db, 'quizzes'), newQuiz.id), quizData);
 
       toast({
         title: 'Success',
@@ -133,16 +134,14 @@ export function QuizPlatform() {
         description: 'Failed to generate new quiz.',
         variant: 'destructive',
       });
-    } finally {
-      setGenerating(false);
     }
   };
 
   const handleQuizComplete = async (score: number, timeSpent: number, answers: QuizAnswer[]) => {
-    if (!currentUser) return;
+    if (!currentUser || !quizzes[0]) return;
 
     try {
-      const attemptData = {
+      const attemptData: QuizAttempt = {
         id: `attempt-${Date.now()}`,
         quizId: quizzes[0].id,
         userId: currentUser.uid,
@@ -166,61 +165,18 @@ export function QuizPlatform() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4">
         <div>
           <h3 className="text-lg font-medium">AI-Powered Quiz Platform</h3>
           <p className="text-sm text-gray-500">
             Test your knowledge with personalized AI-generated quizzes
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Select value={selectedTopic} onValueChange={setSelectedTopic}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Select a topic" />
-            </SelectTrigger>
-            <SelectContent>
-              {STUDY_TOPICS.map((topic) => (
-                <SelectItem key={topic} value={topic}>
-                  {topic}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={difficulty} onValueChange={(value: Quiz['difficulty']) => setDifficulty(value)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            onClick={handleGenerateQuiz}
-            disabled={generating}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-          >
-            {generating ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Brain className="w-4 h-4 mr-2" />
-            )}
-            Generate Quiz
-          </Button>
-        </div>
+        <QuizCreationDialog onCreateQuiz={handleCreateQuiz} />
       </div>
 
       {analytics && (
