@@ -1,4 +1,3 @@
-
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { GEMINI_API_KEY, GEMINI_ENDPOINT } from './ai';
@@ -120,7 +119,7 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
                 4. Has measurable learning objectives
                 5. Gradually builds complexity
                 
-                Return the response as a VALID JSON object with this exact structure:
+                Return ONLY a valid JSON object with this exact structure without any additional text or markdown:
                 {
                   "overallDescription": "Brief description of the entire study plan",
                   "keyLearningPoints": ["Key point 1", "Key point 2", ...],
@@ -136,8 +135,7 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
                           "description": "Task description",
                           "estimatedTimeMinutes": 30,
                           "completed": false
-                        },
-                        ...
+                        }
                       ],
                       "estimatedTimeMinutes": 60,
                       "resources": [
@@ -146,11 +144,9 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
                           "url": "https://example.com/resource", 
                           "type": "video|article|book|exercise|other",
                           "description": "Brief description"
-                        },
-                        ...
+                        }
                       ]
-                    },
-                    ...
+                    }
                   ]
                 }
                 
@@ -159,7 +155,8 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
                 - The plan spans ${diffDays} days maximum
                 - Resources are relevant and varied according to the preferred formats: ${input.preferredFormat.join(', ')}
                 - Tasks are specific and actionable
-                - IDs for tasks are truly unique strings`
+                - IDs for tasks are truly unique strings
+                - Make sure to use proper JSON syntax with no trailing commas or invalid characters`
               }
             ]
           }
@@ -180,13 +177,37 @@ export async function generateStudyPlan(input: StudyPlanInput): Promise<StudyPla
     // Extract the JSON from the text response
     let jsonText = data.candidates[0].content.parts[0].text;
     
+    // Log the raw response for debugging
+    console.log("Raw AI response:", jsonText);
+    
+    // Clean up the JSON text by removing any potential markdown formatting or additional text
+    let cleanJsonText = jsonText;
+    
     // Find JSON content (between curly braces)
     const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("Could not parse AI response");
+      throw new Error("Could not extract valid JSON from AI response");
     }
     
-    const planData = JSON.parse(jsonMatch[0]);
+    cleanJsonText = jsonMatch[0];
+    
+    // Additional cleanup to ensure valid JSON
+    // Remove trailing commas which are common AI mistakes
+    cleanJsonText = cleanJsonText.replace(/,(\s*[\]}])/g, '$1');
+    
+    // Ensure we have a parseable JSON
+    let planData;
+    try {
+      planData = JSON.parse(cleanJsonText);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      throw new Error(`Failed to parse AI response: ${parseError.message}`);
+    }
+    
+    // Validate required properties
+    if (!planData.overallDescription || !Array.isArray(planData.keyLearningPoints) || !Array.isArray(planData.days)) {
+      throw new Error("AI response missing required properties");
+    }
     
     // Create the study plan object
     const studyPlan: StudyPlan = {
