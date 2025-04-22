@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Canvas, Circle, Rect, IText, Path } from 'fabric';
+import { fabric } from 'fabric';
 import { WhiteboardToolbar } from './WhiteboardToolbar';
 import { UserCursor } from './UserCursor';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,12 +24,11 @@ type WhiteboardCursor = {
 };
 
 export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteboardProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [canvas, setCanvas] = useState<Canvas | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
   const [activeTool, setActiveTool] = useState<string>('select');
   const [activeColor, setActiveColor] = useState<string>('#000000');
   const [brushSize, setBrushSize] = useState<number>(2);
-  const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [cursors, setCursors] = useState<WhiteboardCursor[]>([]);
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -39,28 +38,41 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const mousePositionRef = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   
-  // Initialize canvas
+  // Initialize canvas safely
   useEffect(() => {
-    if (!canvasRef.current || canvas) return;
+    // Only initialize once
+    if (fabricCanvasRef.current) return;
+    
+    if (!canvasRef.current || !canvasContainerRef.current) {
+      console.error("Canvas or container refs not available");
+      return;
+    }
+    
+    // Get the container width to make the canvas responsive
+    const containerWidth = canvasContainerRef.current.clientWidth;
     
     try {
-      const fabricCanvas = new Canvas(canvasRef.current, {
-        width: canvasRef.current.offsetWidth,
+      console.log("Initializing fabric canvas");
+      
+      // Initialize the fabricCanvas
+      const canvas = new fabric.Canvas(canvasRef.current, {
+        width: containerWidth,
         height: 500,
         backgroundColor: '#ffffff',
         selection: true,
         preserveObjectStacking: true,
-        isDrawingMode: false,
       });
       
-      setCanvas(fabricCanvas);
+      console.log("Canvas created:", canvas);
+      fabricCanvasRef.current = canvas;
       
-      // Set brush properties after canvas is initialized and brush is created
-      if (fabricCanvas.freeDrawingBrush) {
-        fabricCanvas.freeDrawingBrush.color = activeColor;
-        fabricCanvas.freeDrawingBrush.width = brushSize;
+      // Initialize brush with default values
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = activeColor;
+        canvas.freeDrawingBrush.width = brushSize;
+        console.log("Brush initialized:", canvas.freeDrawingBrush);
       } else {
-        console.error("freeDrawingBrush is not available");
+        console.warn("freeDrawingBrush not available on canvas initialization");
       }
       
       // Emit join event
@@ -87,22 +99,50 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       
       // Handle window resize
       const handleResize = () => {
-        if (canvasRef.current && fabricCanvas) {
-          fabricCanvas.setDimensions({
-            width: canvasRef.current.offsetWidth,
-            height: 500
-          });
-          fabricCanvas.renderAll();
+        if (canvasContainerRef.current && canvas) {
+          const newWidth = canvasContainerRef.current.clientWidth;
+          canvas.setWidth(newWidth);
+          canvas.renderAll();
         }
       };
       
       window.addEventListener('resize', handleResize);
       
-      return () => {
-        if (fabricCanvas) {
-          fabricCanvas.dispose();
+      // Setup path created event to sync drawing
+      canvas.on('path:created', (e: any) => {
+        if (socket && currentUser && e.path) {
+          const pathAsJson = e.path.toJSON();
+          
+          socket.emit('whiteboard-object-added', {
+            groupId,
+            userId: currentUser.uid,
+            objectType: 'path',
+            path: pathAsJson,
+          });
         }
+      });
+      
+      // Setup object modified event for collaborative editing
+      canvas.on('object:modified', (e: any) => {
+        if (socket && currentUser && e.target) {
+          const objectAsJson = e.target.toJSON();
+          
+          socket.emit('whiteboard-object-modified', {
+            groupId,
+            userId: currentUser.uid,
+            objectId: e.target.id,
+            object: objectAsJson
+          });
+        }
+      });
+      
+      return () => {
         window.removeEventListener('resize', handleResize);
+        
+        if (canvas) {
+          canvas.dispose();
+          fabricCanvasRef.current = null;
+        }
         
         // Emit leave event
         if (socket && currentUser) {
@@ -119,72 +159,70 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
         description: "Could not initialize the collaborative whiteboard.",
         variant: "destructive"
       });
+      return () => {};
     }
-  }, [canvasRef, groupId, socket, currentUser, activeColor, brushSize]);
+  }, [canvasRef, groupId, socket, currentUser, activeColor, brushSize, toast]);
   
-  // Set up socket listeners
+  // Set up socket listeners for collaboration
   useEffect(() => {
-    if (!socket || !canvas) return;
+    if (!socket) return;
     
-    // Handle object added event
+    // Handle object added event from other users
     socket.on('whiteboard-object-added', (data: any) => {
       if (data.userId === currentUser?.uid) return; // Skip if I'm the sender
       
       if (lastEventRef.current === JSON.stringify(data)) return; // Skip duplicates
       
       try {
-        // Add object to canvas based on type
-        switch (data.objectType) {
-          case 'rect':
-            const rect = new Rect({
-              left: data.left,
-              top: data.top,
-              width: data.width,
-              height: data.height,
-              fill: data.fill,
-              stroke: data.stroke,
-              strokeWidth: data.strokeWidth,
-            });
-            canvas.add(rect);
-            break;
-            
-          case 'circle':
-            const circle = new Circle({
-              left: data.left,
-              top: data.top,
-              radius: data.radius,
-              fill: data.fill,
-              stroke: data.stroke,
-              strokeWidth: data.strokeWidth,
-            });
-            canvas.add(circle);
-            break;
-            
-          case 'text':
-            const text = new IText(data.text, {
-              left: data.left,
-              top: data.top,
-              fill: data.fill,
-              fontSize: data.fontSize,
-              fontFamily: data.fontFamily,
-            });
-            canvas.add(text);
-            break;
-            
-          case 'path':
-            const path = new Path(data.path, {
-              stroke: data.stroke,
-              strokeWidth: data.strokeWidth,
-              fill: null,
-            });
-            canvas.add(path);
-            break;
-            
-          default:
-            console.log("Unknown object type received:", data);
+        if (!fabricCanvasRef.current) {
+          console.error("Canvas not available for adding remote object");
+          return;
         }
         
-        canvas.renderAll();
+        const canvas = fabricCanvasRef.current;
+        
+        // Add object to canvas based on type
+        if (data.objectType === 'path' && data.path) {
+          fabric.util.enlivenObjects([data.path], function(objects) {
+            if (objects && objects[0] && canvas) {
+              canvas.add(objects[0]);
+              canvas.renderAll();
+            }
+          }, 'fabric');
+        } else if (data.objectType === 'rect') {
+          const rect = new fabric.Rect({
+            left: data.left,
+            top: data.top,
+            width: data.width,
+            height: data.height,
+            fill: data.fill,
+            stroke: data.stroke,
+            strokeWidth: data.strokeWidth,
+          });
+          canvas.add(rect);
+          canvas.renderAll();
+        } else if (data.objectType === 'circle') {
+          const circle = new fabric.Circle({
+            left: data.left,
+            top: data.top,
+            radius: data.radius,
+            fill: data.fill,
+            stroke: data.stroke,
+            strokeWidth: data.strokeWidth,
+          });
+          canvas.add(circle);
+          canvas.renderAll();
+        } else if (data.objectType === 'text') {
+          const text = new fabric.IText(data.text || 'Text', {
+            left: data.left,
+            top: data.top,
+            fill: data.fill,
+            fontSize: data.fontSize,
+            fontFamily: data.fontFamily,
+          });
+          canvas.add(text);
+          canvas.renderAll();
+        }
       } catch (error) {
         console.error("Error handling whiteboard object:", error);
       }
@@ -193,9 +231,11 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
     // Handle clear event
     socket.on('whiteboard-clear', (data: any) => {
       if (data.userId === currentUser?.uid) return; // Skip if I'm the sender
-      canvas.clear();
-      canvas.backgroundColor = '#ffffff';
-      canvas.renderAll();
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.clear();
+        fabricCanvasRef.current.backgroundColor = '#ffffff';
+        fabricCanvasRef.current.renderAll();
+      }
     });
     
     // Handle cursor updates
@@ -229,11 +269,13 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       socket.off('whiteboard-cursor-update');
       socket.off('whiteboard-user-left');
     };
-  }, [socket, canvas, currentUser]);
+  }, [socket, currentUser]);
   
   // Handle tool changes
   useEffect(() => {
-    if (!canvas) return;
+    if (!fabricCanvasRef.current) return;
+    
+    const canvas = fabricCanvasRef.current;
     
     // Enable/disable drawing mode based on active tool
     canvas.isDrawingMode = activeTool === 'draw';
@@ -244,7 +286,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       canvas.freeDrawingBrush.width = brushSize;
     }
     
-  }, [activeTool, activeColor, brushSize, canvas]);
+  }, [activeTool, activeColor, brushSize]);
   
   // Mouse move handler for cursor position
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -274,23 +316,30 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const handleToolChange = (tool: string) => {
     setActiveTool(tool);
     
-    if (!canvas) return;
+    if (!fabricCanvasRef.current) {
+      console.warn("Canvas not ready for tool change");
+      return;
+    }
+    
+    const canvas = fabricCanvasRef.current;
     
     if (tool === 'text') {
       // Add a text object at the center of the canvas
-      const text = new IText("Text", {
+      const text = new fabric.IText("Text", {
         left: canvas.width! / 2,
         top: canvas.height! / 2,
         fontSize: 20,
         fill: activeColor,
         fontFamily: 'Arial',
-        editable: true,
       });
       
       canvas.add(text);
       canvas.setActiveObject(text);
-      text.enterEditing();
-      text.selectAll();
+      
+      if (text.enterEditing) {
+        text.enterEditing();
+        text.selectAll();
+      }
       
       // Emit text object
       if (socket && currentUser) {
@@ -308,7 +357,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       }
     } else if (tool === 'rect') {
       // Create a rectangle at the mouse position
-      const rect = new Rect({
+      const rect = new fabric.Rect({
         left: mousePositionRef.current.x - 50,
         top: mousePositionRef.current.y - 50,
         width: 100,
@@ -338,7 +387,7 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       }
     } else if (tool === 'circle') {
       // Create a circle at the mouse position
-      const circle = new Circle({
+      const circle = new fabric.Circle({
         left: mousePositionRef.current.x - 50,
         top: mousePositionRef.current.y - 50,
         radius: 50,
@@ -371,14 +420,18 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const handleColorChange = (color: string) => {
     setActiveColor(color);
     
-    if (canvas && canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = color;
+    if (fabricCanvasRef.current) {
+      const canvas = fabricCanvasRef.current;
+      
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = color;
+      }
       
       // Update selected object color if applicable
       const activeObject = canvas.getActiveObject();
       if (activeObject) {
         if (activeObject.type === 'i-text') {
-          (activeObject as IText).set('fill', color);
+          (activeObject as fabric.IText).set('fill', color);
         } else {
           activeObject.set('fill', color);
           activeObject.set('stroke', color);
@@ -392,25 +445,25 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
   const handleBrushSizeChange = (size: number) => {
     setBrushSize(size);
     
-    if (canvas && canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.width = size;
+    if (fabricCanvasRef.current && fabricCanvasRef.current.freeDrawingBrush) {
+      fabricCanvasRef.current.freeDrawingBrush.width = size;
       
       // Update selected object stroke width if applicable
-      const activeObject = canvas.getActiveObject();
+      const activeObject = fabricCanvasRef.current.getActiveObject();
       if (activeObject && activeObject.type !== 'i-text') {
         activeObject.set('strokeWidth', size);
-        canvas.renderAll();
+        fabricCanvasRef.current.renderAll();
       }
     }
   };
   
   // Handle clear canvas
   const handleClearCanvas = () => {
-    if (!canvas || !socket || !currentUser) return;
+    if (!fabricCanvasRef.current || !socket || !currentUser) return;
     
-    canvas.clear();
-    canvas.backgroundColor = '#ffffff';
-    canvas.renderAll();
+    fabricCanvasRef.current.clear();
+    fabricCanvasRef.current.backgroundColor = '#ffffff';
+    fabricCanvasRef.current.renderAll();
     
     socket.emit('whiteboard-clear', {
       groupId,
@@ -422,50 +475,6 @@ export function CollaborativeWhiteboard({ groupId, socket }: CollaborativeWhiteb
       description: "All users can now see the clean whiteboard",
     });
   };
-  
-  // Canvas path creation handler
-  useEffect(() => {
-    if (!canvas || !socket || !currentUser) return;
-    
-    const pathCreatedHandler = (e: any) => {
-      const pathObj = e.path as any;
-      
-      // Ensure the path object is properly accessed
-      if (!pathObj) {
-        console.error("Path object is undefined");
-        return;
-      }
-      
-      // Access the path data safely
-      const pathData = pathObj.path || [];
-      
-      // Emit the path to other clients
-      socket.emit('whiteboard-object-added', {
-        groupId,
-        userId: currentUser.uid,
-        objectType: 'path',
-        path: pathData,
-        stroke: pathObj.stroke,
-        strokeWidth: pathObj.strokeWidth,
-      });
-      
-      // Save to lastEventRef to avoid duplicates
-      lastEventRef.current = JSON.stringify({
-        groupId,
-        userId: currentUser.uid,
-        objectType: 'path',
-        path: pathData,
-        stroke: pathObj.stroke,
-        strokeWidth: pathObj.strokeWidth,
-      });
-    };
-    
-    canvas.on('path:created', pathCreatedHandler);
-    
-    return () => {
-      canvas.off('path:created', pathCreatedHandler);
-    };
-  }, [canvas, socket, currentUser, groupId]);
   
   // Clean up stale cursors
   useEffect(() => {
