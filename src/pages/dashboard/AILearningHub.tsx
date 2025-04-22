@@ -1,11 +1,11 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FocusTimeline } from "@/components/ai-learning/FocusTimeline";
+import FocusTimeline from "@/components/ai-learning/FocusTimeline";
 import { FlashcardsAndQuizzes } from "@/components/ai-learning/FlashcardsAndQuizzes";
-import { DailyDigest } from "@/components/ai-learning/DailyDigest";
+import DailyDigest from "@/components/ai-learning/DailyDigest";
 import { QuizPlatform } from "@/components/ai-learning/QuizPlatform";
-import { DynamicRoleAssignment } from "@/components/ai-learning/DynamicRoleAssignment";
+import DynamicRoleAssignment from "@/components/ai-learning/DynamicRoleAssignment";
 import { SmartSessionBuilder } from "@/components/ai-learning/SmartSessionBuilder";
 
 export default function AILearningHub() {
