@@ -181,29 +181,32 @@ export default function StudyPromptGenerator() {
                   My Plans {plans.length > 0 && `(${plans.length})`}
                 </TabsTrigger>
               </TabsList>
+              <div className="pt-6">
+                <TabsContent value="create" className="m-0">
+                  <StudyPlanForm onSubmit={handleCreatePlan} isLoading={loading} />
+                </TabsContent>
+                
+                <TabsContent value="plans" className="m-0">
+                  {isDetailView && selectedPlan ? (
+                    <StudyPlanDetail 
+                      plan={selectedPlan} 
+                      onBack={handleBackToList} 
+                      onPlanUpdated={planUpdated}
+                    />
+                  ) : (
+                    <StudyPlansList 
+                      plans={plans} 
+                      isLoading={loading} 
+                      onViewPlan={handleViewPlan} 
+                      onRefresh={loadPlans}
+                    />
+                  )}
+                </TabsContent>
+              </div>
             </Tabs>
           </CardHeader>
-          <CardContent className="pt-6">
-            <TabsContent value="create" className="m-0">
-              <StudyPlanForm onSubmit={handleCreatePlan} isLoading={loading} />
-            </TabsContent>
-            
-            <TabsContent value="plans" className="m-0">
-              {isDetailView && selectedPlan ? (
-                <StudyPlanDetail 
-                  plan={selectedPlan} 
-                  onBack={handleBackToList} 
-                  onPlanUpdated={planUpdated}
-                />
-              ) : (
-                <StudyPlansList 
-                  plans={plans} 
-                  isLoading={loading} 
-                  onViewPlan={handleViewPlan} 
-                  onRefresh={loadPlans}
-                />
-              )}
-            </TabsContent>
+          <CardContent className="pt-0">
+            {/* Content is now rendered within TabsContent above */}
           </CardContent>
         </Card>
       </div>
