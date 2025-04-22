@@ -92,6 +92,12 @@ const navigationItems: SidebarSectionType[] = [
         icon: Book,
         badge: "New",
       },
+      {
+        title: "Study Statistics",
+        href: "/dashboard/study-statistics",
+        icon: BarChart2,
+        badge: "New",
+      },
     ],
   },
   {
@@ -121,6 +127,7 @@ const navigationItems: SidebarSectionType[] = [
     ],
   },
 ];
+
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
@@ -179,7 +186,6 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
                     <Link
                       to={item.href}
                       key={item.href}
-                      // href={item.href}
                       className={cn(
                         "flex items-center px-3 py-2 text-sm rounded-lg transition-colors",
                         location.pathname === item.href

@@ -1,6 +1,6 @@
-
-import HelpCenter from "./pages/dashboard/HelpCenter";
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import HelpCenter from "./pages/dashboard/HelpCenter";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -27,6 +27,7 @@ import AILearningHub from "./pages/dashboard/AILearningHub";
 import FlashcardsQuizzes from "./pages/dashboard/FlashcardsQuizzes";
 import Documentation from "./pages/Documentation";
 import StudyGroupDetail from "./pages/dashboard/StudyGroupDetail";
+import StudyStatisticsPage from "./pages/dashboard/StudyStatistics";
 
 const App = () => {
   return (
@@ -55,6 +56,13 @@ const App = () => {
         <Route path="/dashboard/motivation" element={<ProtectedRoute><DashboardLayout><MotivationCenter /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/skillmatch-grid" element={<ProtectedRoute><DashboardLayout><SkillMatchGrid /></DashboardLayout></ProtectedRoute>} />
         <Route path="/dashboard/flashcards-quizzes" element={<ProtectedRoute><DashboardLayout><FlashcardsQuizzes /></DashboardLayout></ProtectedRoute>} />
+        <Route path="/dashboard/study-statistics" element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <StudyStatisticsPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        } />
         <Route path="/documentation" element={<Documentation />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
