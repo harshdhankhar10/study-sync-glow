@@ -1,5 +1,5 @@
 
-import { Quiz, QuizQuestion } from '@/types/quiz';
+import { Quiz, QuizQuestion, QuizAttempt, QuizAnswer, QuizAnalytics } from '@/types/quiz';
 import { GEMINI_API_KEY, GEMINI_ENDPOINT } from '@/lib/ai';
 
 export async function generateQuiz(topic: string, difficulty: Quiz['difficulty'], userContext: any): Promise<Quiz> {

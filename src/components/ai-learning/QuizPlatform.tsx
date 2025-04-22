@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
-import { Quiz, QuizAnalytics } from '@/types/quiz';
+import { Quiz, QuizAnalytics, QuizAnswer } from '@/types/quiz';
 import { generateQuiz, generateQuizAnalytics } from '@/lib/quiz-generator';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -60,7 +59,6 @@ export function QuizPlatform() {
 
       setQuizzes(quizzesData);
 
-      // Load quiz attempts and generate analytics
       const attemptsRef = collection(db, 'quizAttempts');
       const attemptsQuery = query(attemptsRef, where('userId', '==', currentUser.uid));
       const attemptsSnap = await getDocs(attemptsQuery);
@@ -140,7 +138,7 @@ export function QuizPlatform() {
     }
   };
 
-  const handleQuizComplete = async (score: number, timeSpent: number, answers: any[]) => {
+  const handleQuizComplete = async (score: number, timeSpent: number, answers: QuizAnswer[]) => {
     if (!currentUser) return;
 
     try {
