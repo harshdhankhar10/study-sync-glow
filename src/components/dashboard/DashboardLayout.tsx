@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { 
   Menu, Brain, Calendar, FileText, Star, Users, Settings, 
-  User, Book, BarChart2, LogOut, Target, Globe, Home, Award,
+  Book, BarChart2, LogOut, Target, Globe, Home, Award,
   Clock, MessageSquare, HelpCircle, ChevronDown, Plus, Search,
   Bell, ChevronRight, PieChart, BookOpen, Clipboard, CheckCircle, Layout, LineChart, 
   LightbulbIcon, CheckSquare, Trophy
@@ -125,6 +125,13 @@ const navigationItems: SidebarSectionType[] = [
         href: "/dashboard/study-statistics",
         icon: BarChart2,
         badge: "New",
+      },
+      {
+        title: "Capstone Projects",
+        href: "/dashboard/capstone",
+        icon: Award,
+        badge: "New",
+        isFeatured: true,
       },
     ],
   },

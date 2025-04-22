@@ -32,6 +32,7 @@ import StudyStatisticsPage from "./pages/dashboard/StudyStatistics";
 import StudyPromptGenerator from "./pages/dashboard/StudyPromptGenerator";
 import Gamification from "./pages/dashboard/Gamification";
 import JournalPage from "./pages/dashboard/JournalPage";
+import CapstoneProjects from "./pages/dashboard/CapstoneProjects";
 
 const App = () => {
   return (
@@ -86,6 +87,13 @@ const App = () => {
           <ProtectedRoute>
             <DashboardLayout>
               <JournalPage />
+            </DashboardLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dashboard/capstone" element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <CapstoneProjects />
             </DashboardLayout>
           </ProtectedRoute>
         } />
