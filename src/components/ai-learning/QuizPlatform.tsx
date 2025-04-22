@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
@@ -170,7 +171,13 @@ export function QuizPlatform() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-10">
+        <p className="text-lg text-gray-500">Loading your quizzes...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

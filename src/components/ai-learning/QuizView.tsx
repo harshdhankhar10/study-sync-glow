@@ -16,6 +16,15 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
   const [showResults, setShowResults] = useState(false);
   const [startTime] = useState(Date.now());
 
+  // Early return if quiz or quiz.questions is undefined or empty
+  if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+    return (
+      <Card className="p-6">
+        <p className="text-center text-gray-500">No quiz questions available.</p>
+      </Card>
+    );
+  }
+
   const currentQuestion = quiz.questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
 
@@ -43,10 +52,6 @@ export function QuizView({ quiz, onComplete }: QuizViewProps) {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
-
-  if (!quiz || !quiz.questions || quiz.questions.length === 0) {
-    return <div>No quiz questions available.</div>;
-  }
 
   if (showResults) {
     const score = (quiz.questions.filter(question => 
