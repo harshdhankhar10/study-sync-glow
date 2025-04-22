@@ -37,7 +37,7 @@ const formSchema = z.object({
   status: z.enum(['todo', 'in-progress', 'completed']),
   tags: z.string().optional(),
   relatedSubject: z.string().optional(),
-  estimatedTime: z.string().optional().transform(val => val ? Number(val) : undefined),
+  estimatedTime: z.coerce.number().optional(),
 });
 
 interface TaskFormProps {
@@ -63,8 +63,14 @@ export function TaskForm({ initialData, onSubmit, isSubmitting }: TaskFormProps)
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     const formData: TaskFormData = {
-      ...values,
+      title: values.title,
+      description: values.description,
+      dueDate: values.dueDate,
+      priority: values.priority,
+      status: values.status,
       tags: values.tags ? values.tags.split(',').map(tag => tag.trim()) : undefined,
+      relatedSubject: values.relatedSubject,
+      estimatedTime: values.estimatedTime,
     };
     onSubmit(formData);
   };
